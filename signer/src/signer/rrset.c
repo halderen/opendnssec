@@ -248,7 +248,7 @@ collection_class
 rrset_store_initialize()
 {
     collection_class klass;
-    collection_class_allocated(&klass, NULL, memberdestroy);
+    collection_class_backed(&klass, filename, NULL, memberdestroy, memberdispose, memberrestore);
     return klass;
 }
 

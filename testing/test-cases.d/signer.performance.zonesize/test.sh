@@ -32,7 +32,7 @@ expr $timestop - $timestart &&
 
 test -f "$INSTALL_ROOT/var/opendnssec/signed/z$size" &&
 
-ods_stop_ods-control 120 &&
+ods_stop_ods-control 900 &&
 return 0
 
 ods_kill
