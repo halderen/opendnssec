@@ -123,7 +123,7 @@ swapinassert(collection_t collection)
     collection->prev = NULL;
     collection->method->count++;
     /* look whether threshold is exceeded */
-    if(collection->method->count > 100000) {
+    if(collection->method->count > 100) {
         least = collection->method->last;
         swapout(least);
         collection->method->count--;
