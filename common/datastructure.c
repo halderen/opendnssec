@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <assert.h>
 #include "status.h"
 #include "datastructure.h"
 
@@ -38,6 +39,9 @@ struct collection_class_struct {
     int (*member_destroy)(void* cargo, void* member);
     int (*member_dispose)(void* cargo, void* member, FILE*);
     int (*member_restore)(void* cargo, void* member, FILE*);
+    struct collection_instance_struct* first;
+    struct collection_instance_struct* last;
+    int count;
 };
 
 struct collection_instance_struct {
@@ -47,20 +51,20 @@ struct collection_instance_struct {
     int iterator;
     int count; /** number of members in array */
     long location;
+    struct collection_instance_struct* next; 
+    struct collection_instance_struct* prev;
 };
 
 static int
 swapin(collection_t collection)
 {
     int i;
-    if(collection->count > 0) {
-        if(fseek(collection->method->store, collection->location, SEEK_SET))
+    if(fseek(collection->method->store, collection->location, SEEK_SET))
+        return 1;
+    for(i=0; i<collection->count; i++) {
+        if(collection->method->member_restore(collection->method->cargo,
+                collection->array + collection->size * i, collection->method->store))
             return 1;
-        for(i=0; i<collection->count; i++) {
-            if(collection->method->member_restore(collection->method->cargo,
-                    collection->array + collection->size * i, collection->method->store))
-                return 1;
-        }
     }
     return 0;
 }
@@ -69,17 +73,67 @@ static int
 swapout(collection_t collection)
 {
     int i;
-    if(collection->count > 0) {
-        if(fseek(collection->method->store, 0, SEEK_END))
+    if(fseek(collection->method->store, 0, SEEK_END))
+        return 1;
+    collection->location = ftell(collection->method->store);
+    for(i=0; i<collection->count; i++) {
+        if(collection->method->member_dispose(collection->method->cargo,
+                collection->array + collection->size * i, collection->method->store))
             return 1;
-        collection->location = ftell(collection->method->store);
-        for(i=0; i<collection->count; i++) {
-            if(collection->method->member_dispose(collection->method->cargo,
-                    collection->array + collection->size * i, collection->method->store))
-                return 1;
-        }
     }
     return 0;
+}
+
+static void
+swapinassert(collection_t collection)
+{
+    int needsswapin = 1;
+    struct collection_instance_struct* least;
+    if(!collection->method->store)
+        /* no backing store, item always in memory */
+        return;
+    if(collection->count == 0)
+        /* empty items are always in memory */
+        return;
+    if(collection->method->first == collection)
+        /* most recent item optimization, nothing to do */
+        return;
+    if(collection->next != collection->prev) {
+        /* item in contained in chain, remove from current position */
+        collection->method->count--;
+        if(collection->next == NULL) {
+            assert(collection->method->last == collection);
+            collection->method->last = collection->prev;
+        } else
+            collection->next->prev = collection->prev;
+        if(collection->prev == NULL) {
+            assert(collection->method->first == collection);
+            collection->method->first = collection->next;
+        } else
+            collection->prev->next = collection->next;
+        needsswapin = 0;
+    }
+    /* insert item in front of LRU chain */
+    collection->next = collection->method->first;
+    if(collection->method->first != NULL)
+        collection->method->first->prev = collection;
+    collection->method->first = collection;
+    if(collection->method->last == NULL)
+        collection->method->last = collection;
+    collection->prev = NULL;
+    collection->method->count++;
+    /* look whether threshold is exceeded */
+    if(collection->method->count > 100000) {
+        least = collection->method->last;
+        swapout(least);
+        collection->method->count--;
+        least->prev->next = NULL;
+        collection->method->last = least->prev;
+        least->prev = least->next = least;
+    }
+    if(needsswapin) {
+        swapin(collection);
+    }
 }
 
 void
@@ -105,6 +159,8 @@ collection_class_backed(collection_class* klass, char* fname, void *cargo,
     (*klass)->member_destroy = member_destroy;
     (*klass)->member_dispose = member_dispose;
     (*klass)->member_restore = member_restore;
+    (*klass)->first = NULL;
+    (*klass)->last = NULL;
     (*klass)->store = fopen(fname, "w+");
 }
 
@@ -127,6 +183,7 @@ collection_create_array(collection_t* collection, size_t membsize,
     (*collection)->array = NULL;
     (*collection)->iterator = -1;
     (*collection)->method = klass;
+    (*collection)->next = (*collection)->prev = *collection;
 }
 
 void
@@ -149,14 +206,11 @@ void
 collection_add(collection_t collection, void *data)
 {
     void* ptr;
-    if(collection->method->store)
-        swapin(collection);
+    swapinassert(collection);
     CHECKALLOC(ptr = realloc(collection->array, (collection->count+1)*collection->size));
     collection->array = ptr;
     memcpy(collection->array + collection->size * collection->count, data, collection->size);
     collection->count += 1;
-    if(collection->method->store)
-        swapout(collection);
 }
 
 void
@@ -165,9 +219,9 @@ collection_del_index(collection_t collection, int index)
     void* ptr;
     if (index<0 || index >= collection->count)
         return;
-    if(collection->method->store)
-        swapin(collection);
-    collection->method->member_destroy(collection->method->cargo, &collection->array[collection->size * index]);
+    swapinassert(collection);
+    collection->method->member_destroy(&collection->array[collection->size * index]);
+    memmove(collection->array + collection->size * index, &collection->array + collection->size * (index + 1), (collection->count - index) * collection->size);
     collection->count -= 1;
     memmove(&collection->array[collection->size * index], &collection->array[collection->size * (index + 1)], (collection->count - index) * collection->size);
     if (collection->count > 0) {
@@ -177,8 +231,6 @@ collection_del_index(collection_t collection, int index)
         free(collection->array);
         collection->array = NULL;
     }
-    if(collection->method->store)
-        swapout(collection);
 }
 
 void
@@ -191,16 +243,13 @@ void*
 collection_iterator(collection_t collection)
 {
     if(collection->iterator < 0) {
-        if(collection->method->store)
-            swapin(collection);
+        swapinassert(collection);
         collection->iterator = collection->count;
     }
     collection->iterator -= 1;
     if(collection->iterator >= 0) {
         return &collection->array[collection->iterator * collection->size];
     } else {
-        if(collection->method->store)
-            swapout(collection);
         return NULL;
     }
 }
