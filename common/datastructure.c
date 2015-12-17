@@ -99,7 +99,7 @@ swapinassert(collection_t collection)
     if(collection->method->first == collection)
         /* most recent item optimization, nothing to do */
         return;
-    pthread_mutex_lock(collection->method->mutex);
+    pthread_mutex_lock(&collection->method->mutex);
     if(collection->next != collection->prev) {
         /* item in contained in chain, remove from current position */
         collection->method->count--;
@@ -133,7 +133,7 @@ swapinassert(collection_t collection)
         collection->method->last = least->prev;
         least->prev = least->next = least;
     }
-    pthread_mutex_unlock(collection->method->mutex);
+    pthread_mutex_unlock(&collection->method->mutex);
     if(needsswapin) {
         swapin(collection);
     }
