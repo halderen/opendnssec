@@ -93,8 +93,7 @@ swapinassert(collection_t collection)
         /* no backing store, item always in memory */
         return;
     if(collection->count == 0)
-        /* empty items are always in memory */
-        return;
+        needsswapin = 0;
     if(collection->method->first == collection)
         /* most recent item optimization, nothing to do */
         return;
