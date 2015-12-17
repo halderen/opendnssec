@@ -30,12 +30,14 @@
 #include <errno.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
 #include "status.h"
 #include "datastructure.h"
 
 struct collection_class_struct {
     FILE* store;
     void* cargo;
+    pthread_mutex_t mutex;
     int (*member_destroy)(void* cargo, void* member);
     int (*member_dispose)(void* cargo, void* member, FILE*);
     int (*member_restore)(void* cargo, void* member, FILE*);
@@ -97,6 +99,7 @@ swapinassert(collection_t collection)
     if(collection->method->first == collection)
         /* most recent item optimization, nothing to do */
         return;
+    pthread_mutex_lock(&(*klass)->mutex);
     if(collection->next != collection->prev) {
         /* item in contained in chain, remove from current position */
         collection->method->count--;
@@ -130,6 +133,7 @@ swapinassert(collection_t collection)
         collection->method->last = least->prev;
         least->prev = least->next = least;
     }
+    pthread_mutex_unlock(&(*klass)->mutex);
     if(needsswapin) {
         swapin(collection);
     }
@@ -161,6 +165,7 @@ collection_class_backed(collection_class* klass, char* fname, void *cargo,
     (*klass)->first = NULL;
     (*klass)->last = NULL;
     (*klass)->store = fopen(fname, "w+");
+    pthread_mutex_init(&(*klass)->mutex, NULL);
 }
 
 void
@@ -168,6 +173,10 @@ collection_class_destroy(collection_class* klass)
 {
     if (klass == NULL)
         return;
+    if((*klass)->store != NULL) {
+        fclose((*klass)->store);
+        pthread_mutex_destroy(&(*klass)->mutex);
+    }
     free(*klass);
     *klass = NULL;
 }
