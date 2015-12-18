@@ -36,16 +36,16 @@
 
 struct collection_class_struct {
     FILE* store;
-    void* cargo;
     pthread_mutex_t mutex;
-    int (*member_destroy)(void* cargo, void* member);
-    int (*member_dispose)(void* cargo, void* member, FILE*);
-    int (*member_restore)(void* cargo, void* member, FILE*);
+    int (*member_destroy)(void* member);
+    int (*member_dispose)(void* member, FILE*);
+    int (*member_restore)(void* member, FILE*);
     int (*obtain)(collection_t);
     int (*release)(collection_t);
     struct collection_instance_struct* first;
     struct collection_instance_struct* last;
     int count;
+    int cachesize;
 };
 
 struct collection_instance_struct {
@@ -63,11 +63,11 @@ static int
 swapin(collection_t collection)
 {
     int i;
-    if(fseek(collection->method->store, collection->location, SEEK_SET))
+    collection_class method = collection->method;
+    if(fseek(method->store, collection->location, SEEK_SET))
         return 1;
     for(i=0; i<collection->count; i++) {
-        if(collection->method->member_restore(collection->method->cargo,
-                collection->array + collection->size * i, collection->method->store))
+        if(method->member_restore(collection->array + collection->size * i, method->store))
             return 1;
     }
     return 0;
@@ -77,12 +77,12 @@ static int
 swapout(collection_t collection)
 {
     int i;
-    if(fseek(collection->method->store, 0, SEEK_END))
+    collection_class method = collection->method;
+    if(fseek(method->store, 0, SEEK_END))
         return 1;
-    collection->location = ftell(collection->method->store);
+    collection->location = ftell(method->store);
     for(i=0; i<collection->count; i++) {
-        if(collection->method->member_dispose(collection->method->cargo,
-                collection->array + collection->size * i, collection->method->store))
+        if(method->member_dispose(collection->array + collection->size * i, method->store))
             return 1;
     }
     return 0;
@@ -93,50 +93,51 @@ assure(collection_t collection)
 {
     int needsswapin = 1;
     struct collection_instance_struct* least;
+    collection_class method = collection->method;
     if(collection->count == 0)
         needsswapin = 0;
-    if(collection->method->first == collection)
+    if(method->first == collection)
         /* most recent item optimization, nothing to do */
         return;
-    pthread_mutex_lock(&collection->method->mutex);
+    pthread_mutex_lock(&method->mutex);
     if(collection->next != collection->prev && collection->next != NULL) {
         /* item in contained in chain, remove from current position */
-        collection->method->count--;
+        method->count--;
         if(collection->next == NULL) {
-            assert(collection->method->last == collection);
-            collection->method->last = collection->prev;
+            assert(method->last == collection);
+            method->last = collection->prev;
         } else
             collection->next->prev = collection->prev;
         if(collection->prev == NULL) {
-            assert(collection->method->first == collection);
-            collection->method->first = collection->next;
+            assert(method->first == collection);
+            method->first = collection->next;
         } else
             collection->prev->next = collection->next;
         needsswapin = 0;
     }
     /* insert item in front of LRU chain */
-    collection->next = collection->method->first;
-    if(collection->method->first != NULL)
-        collection->method->first->prev = collection;
-    collection->method->first = collection;
-    if(collection->method->last == NULL)
-        collection->method->last = collection;
+    collection->next = method->first;
+    if(method->first != NULL)
+        method->first->prev = collection;
+    method->first = collection;
+    if(method->last == NULL)
+        method->last = collection;
     collection->prev = NULL;
-    collection->method->count++;
+    method->count++;
     /* look whether threshold is exceeded */
-    if(collection->method->count > 100000) {
-        least = collection->method->last;
+    if(method->count > method->cachesize) {
+        least = method->last;
         swapout(least);
-        collection->method->count--;
+        method->count--;
         if(least->prev == NULL) {
-            assert(collection->method->first == least);
-            collection->method->first = NULL;
+            assert(method->first == least);
+            method->first = NULL;
         } else
             least->prev->next = NULL;
-        collection->method->last = least->prev;
+        method->last = least->prev;
         least->prev = least->next = least;
     }
-    pthread_mutex_unlock(&collection->method->mutex);
+    pthread_mutex_unlock(&method->mutex);
     if(needsswapin) {
         swapin(collection);
     }
@@ -146,68 +147,57 @@ static int
 obtain(collection_t collection)
 {
     assure(collection);
+    return 0;
 }
 
 static int
 release(collection_t collection)
 {
+    (void)collection;
+    return 0;
 }
 
 static int
 noop(collection_t collection)
 {
+    (void)collection;
+    return 0;
 }
 
 void
-collection_class_allocated(collection_class* klass, void *cargo,
-        int (*member_destroy)(void* cargo, void* member))
+collection_class_create(collection_class* method, char* fname,
+        int (*member_destroy)(void* member),
+        int (*member_dispose)(void* member, FILE*),
+        int (*member_restore)(void* member, FILE*))
 {
-    CHECKALLOC(*klass = malloc(sizeof(struct collection_class_struct)));
-    (*klass)->cargo = cargo;
-    (*klass)->member_destroy = member_destroy;
-    (*klass)->member_dispose = NULL;
-    (*klass)->member_restore = NULL;
-    (*klass)->obtain = noop;
-    (*klass)->release = noop;
-    (*klass)->store = NULL;
-}
-
-void
-collection_class_backed(collection_class* klass, char* fname, void *cargo,
-        int (*member_destroy)(void* cargo, void* member),
-        int (*member_dispose)(void* cargo, void* member, FILE*),
-        int (*member_restore)(void* cargo, void* member, FILE*))
-{
-    CHECKALLOC(*klass = malloc(sizeof(struct collection_class_struct)));
-    (*klass)->cargo = cargo;
-    (*klass)->member_destroy = member_destroy;
-    (*klass)->member_dispose = member_dispose;
-    (*klass)->member_restore = member_restore;
-    (*klass)->first = NULL;
-    (*klass)->last = NULL;
-    (*klass)->obtain = obtain;
-    (*klass)->release = release;
-    (*klass)->store = fopen(fname, "w+");
-    pthread_mutex_init(&(*klass)->mutex, NULL);
-}
-
-void
-collection_class_external(collection_class* klass, char* fname, void *cargo,
-        int (*member_destroy)(void* cargo, void* member),
-        int (*member_dispose)(void* cargo, void* member, FILE*),
-        int (*member_restore)(void* cargo, void* member, FILE*))
-{
-    CHECKALLOC(*klass = malloc(sizeof(struct collection_class_struct)));
-    (*klass)->cargo = cargo;
-    (*klass)->member_destroy = member_destroy;
-    (*klass)->member_dispose = member_dispose;
-    (*klass)->member_restore = member_restore;
-    (*klass)->first = NULL;
-    (*klass)->last = NULL;
-    (*klass)->obtain = swapin;
-    (*klass)->release = swapout;
-    (*klass)->store = fopen(fname, "w+");
-    pthread_mutex_init(&(*klass)->mutex, NULL);
+    char* configoption;
+    char* endptr;
+    long cachesize;
+    CHECKALLOC(*method = malloc(sizeof(struct collection_class_struct)));
+    (*method)->member_destroy = member_destroy;
+    (*method)->member_dispose = member_dispose;
+    (*method)->member_restore = member_restore;
+    (*method)->obtain = noop;
+    (*method)->release = noop;
+    (*method)->cachesize = -1;
+    (*method)->first = NULL;
+    (*method)->last = NULL;
+    (*method)->store = NULL;
+    configoption = getenv("OPENDNSSEC_OPTION_sigstore");
+    if(configoption != NULL) {
+        cachesize = strtol(configoption, &endptr, 0);
+        if(endptr != configoption) {
+            (*method)->store = fopen(fname, "w+");
+            if (cachesize == 0) {
+                (*method)->obtain = swapin;
+                (*method)->release = swapout;
+            } else if(cachesize > 0) {
+                pthread_mutex_init(&(*method)->mutex, NULL);
+                (*method)->obtain = obtain;
+                (*method)->release = release;
+            }
+        }
+    }
 }
 
 void
@@ -217,7 +207,8 @@ collection_class_destroy(collection_class* klass)
         return;
     if((*klass)->store != NULL) {
         fclose((*klass)->store);
-        pthread_mutex_destroy(&(*klass)->mutex);
+        if((*klass)->cachesize > 0)
+            pthread_mutex_destroy(&(*klass)->mutex);
     }
     free(*klass);
     *klass = NULL;
@@ -243,8 +234,7 @@ collection_destroy(collection_t* collection)
     if(collection == NULL)
         return;
     for (i=0; i < (*collection)->count; i++) {
-        (*collection)->method->member_destroy((*collection)->method->cargo,
-                (*collection)->array + (*collection)->size * i);
+        (*collection)->method->member_destroy((*collection)->array + (*collection)->size * i);
     }
     free((*collection)->array);
     free(*collection);
@@ -255,22 +245,24 @@ void
 collection_add(collection_t collection, void *data)
 {
     void* ptr;
-    collection->method->obtain(collection);
+    collection_class method = collection->method;
+    method->obtain(collection);
     CHECKALLOC(ptr = realloc(collection->array, (collection->count+1)*collection->size));
     collection->array = ptr;
     memcpy(collection->array + collection->size * collection->count, data, collection->size);
     collection->count += 1;
-    collection->method->release(collection);
+    method->release(collection);
 }
 
 void
 collection_del_index(collection_t collection, int index)
 {
     void* ptr;
+    collection_class method = collection->method;
     if (index<0 || index >= collection->count)
         return;
-    collection->method->obtain(collection);
-    collection->method->member_destroy(collection->method->cargo, collection->array + collection->size * index);
+    method->obtain(collection);
+    method->member_destroy(collection->array + collection->size * index);
     memmove(collection->array + collection->size * index, &collection->array + collection->size * (index + 1), (collection->count - index) * collection->size);
     collection->count -= 1;
     if (collection->count > 0) {
@@ -280,7 +272,7 @@ collection_del_index(collection_t collection, int index)
         free(collection->array);
         collection->array = NULL;
     }
-    collection->method->release(collection);
+    method->release(collection);
 }
 
 void
@@ -292,15 +284,16 @@ collection_del_cursor(collection_t collection)
 void*
 collection_iterator(collection_t collection)
 {
+    collection_class method = collection->method;
     if(collection->iterator < 0) {
-        collection->method->obtain(collection);
+        method->obtain(collection);
         collection->iterator = collection->count;
     }
     collection->iterator -= 1;
     if(collection->iterator >= 0) {
         return collection->array + collection->iterator;
     } else {
-        collection->method->release(collection);
+        method->release(collection);
         return NULL;
     }
 }
