@@ -58,6 +58,17 @@ struct collection_instance_struct {
 };
 
 static int
+obtain(collection_t collection)
+{
+    assure(collection);
+}
+
+static int
+release(collection_t collection)
+{
+}
+
+static int
 swapin(collection_t collection)
 {
     int i;
@@ -87,7 +98,7 @@ swapout(collection_t collection)
 }
 
 static void
-swapinassert(collection_t collection)
+assure(collection_t collection)
 {
     int needsswapin = 1;
     struct collection_instance_struct* least;
@@ -100,7 +111,7 @@ swapinassert(collection_t collection)
         /* most recent item optimization, nothing to do */
         return;
     pthread_mutex_lock(&collection->method->mutex);
-    if(collection->next != collection->prev) {
+    if(collection->next != collection->prev && collection->next != NULL) {
         /* item in contained in chain, remove from current position */
         collection->method->count--;
         if(collection->next == NULL) {
@@ -129,7 +140,11 @@ swapinassert(collection_t collection)
         least = collection->method->last;
         swapout(least);
         collection->method->count--;
-        least->prev->next = NULL;
+        if(least->prev == NULL) {
+            assert(collection->method->first == least);
+            collection->method->first = NULL;
+        } else
+            least->prev->next = NULL;
         collection->method->last = least->prev;
         least->prev = least->next = least;
     }
@@ -213,11 +228,12 @@ void
 collection_add(collection_t collection, void *data)
 {
     void* ptr;
-    swapinassert(collection);
+    obtain(collection);
     CHECKALLOC(ptr = realloc(collection->array, (collection->count+1)*collection->size));
     collection->array = ptr;
     memcpy(collection->array + collection->size * collection->count, data, collection->size);
     collection->count += 1;
+    release(collection);
 }
 
 void
@@ -226,7 +242,7 @@ collection_del_index(collection_t collection, int index)
     void* ptr;
     if (index<0 || index >= collection->count)
         return;
-    swapinassert(collection);
+    obtain(collection);
     collection->method->member_destroy(collection->method->cargo, collection->array + collection->size * index);
     memmove(collection->array + collection->size * index, &collection->array + collection->size * (index + 1), (collection->count - index) * collection->size);
     collection->count -= 1;
@@ -237,6 +253,7 @@ collection_del_index(collection_t collection, int index)
         free(collection->array);
         collection->array = NULL;
     }
+    release(collection);
 }
 
 void
@@ -249,13 +266,14 @@ void*
 collection_iterator(collection_t collection)
 {
     if(collection->iterator < 0) {
-        swapinassert(collection);
+        obtain(collection);
         collection->iterator = collection->count;
     }
     collection->iterator -= 1;
     if(collection->iterator >= 0) {
         return collection->array + collection->iterator;
     } else {
+        release(collection);
         return NULL;
     }
 }
