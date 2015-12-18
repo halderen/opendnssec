@@ -19,6 +19,9 @@ ods_reset_env &&
 
 sleep 10 &&
 
+	true &&
+	false &&
+
 ods_start_ods-control &&
 
 cp zonefiles/z$size $INSTALL_ROOT/var/opendnssec/unsigned/z$size &&
