@@ -177,7 +177,7 @@ rrset_type2str(ldns_rr_type type)
 }
 
 static int
-memberdestroy(void* dummy, void* member)
+memberdestroy(void* member)
 {
     rrsig_type* sig = (rrsig_type*) member;
     (void)dummy;
@@ -190,7 +190,7 @@ memberdestroy(void* dummy, void* member)
 }
 
 static int
-memberdispose(void* dummy, void* member, FILE* fp)
+memberdispose(void* member, FILE* fp)
 {
     rrsig_type* sig = (rrsig_type*) member;
     (void)dummy;
@@ -201,7 +201,7 @@ memberdispose(void* dummy, void* member, FILE* fp)
 }
 
 static int
-memberrestore(void* dummy, void* member, FILE* fp)
+memberrestore(void* member, FILE* fp)
 {
     ldns_status status;
     rrsig_type* sig = (rrsig_type*) member;
@@ -248,7 +248,7 @@ collection_class
 rrset_store_initialize()
 {
     collection_class klass;
-    collection_class_backed(&klass, filename, NULL, memberdestroy, memberdispose, memberrestore);
+    collection_class_create(&klass, filename, memberdestroy, memberdispose, memberrestore);
     return klass;
 }
 
