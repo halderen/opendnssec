@@ -41,6 +41,8 @@ struct collection_class_struct {
     int (*member_destroy)(void* cargo, void* member);
     int (*member_dispose)(void* cargo, void* member, FILE*);
     int (*member_restore)(void* cargo, void* member, FILE*);
+    int (*obtain)(collection_t);
+    int (*release)(collection_t);
     struct collection_instance_struct* first;
     struct collection_instance_struct* last;
     int count;
@@ -56,17 +58,6 @@ struct collection_instance_struct {
     struct collection_instance_struct* next; 
     struct collection_instance_struct* prev;
 };
-
-static int
-obtain(collection_t collection)
-{
-    assure(collection);
-}
-
-static int
-release(collection_t collection)
-{
-}
 
 static int
 swapin(collection_t collection)
@@ -102,9 +93,6 @@ assure(collection_t collection)
 {
     int needsswapin = 1;
     struct collection_instance_struct* least;
-    if(!collection->method->store)
-        /* no backing store, item always in memory */
-        return;
     if(collection->count == 0)
         needsswapin = 0;
     if(collection->method->first == collection)
@@ -154,6 +142,22 @@ assure(collection_t collection)
     }
 }
 
+static int
+obtain(collection_t collection)
+{
+    assure(collection);
+}
+
+static int
+release(collection_t collection)
+{
+}
+
+static int
+noop(collection_t collection)
+{
+}
+
 void
 collection_class_allocated(collection_class* klass, void *cargo,
         int (*member_destroy)(void* cargo, void* member))
@@ -163,6 +167,8 @@ collection_class_allocated(collection_class* klass, void *cargo,
     (*klass)->member_destroy = member_destroy;
     (*klass)->member_dispose = NULL;
     (*klass)->member_restore = NULL;
+    (*klass)->obtain = noop;
+    (*klass)->release = noop;
     (*klass)->store = NULL;
 }
 
@@ -179,6 +185,27 @@ collection_class_backed(collection_class* klass, char* fname, void *cargo,
     (*klass)->member_restore = member_restore;
     (*klass)->first = NULL;
     (*klass)->last = NULL;
+    (*klass)->obtain = obtain;
+    (*klass)->release = release;
+    (*klass)->store = fopen(fname, "w+");
+    pthread_mutex_init(&(*klass)->mutex, NULL);
+}
+
+void
+collection_class_external(collection_class* klass, char* fname, void *cargo,
+        int (*member_destroy)(void* cargo, void* member),
+        int (*member_dispose)(void* cargo, void* member, FILE*),
+        int (*member_restore)(void* cargo, void* member, FILE*))
+{
+    CHECKALLOC(*klass = malloc(sizeof(struct collection_class_struct)));
+    (*klass)->cargo = cargo;
+    (*klass)->member_destroy = member_destroy;
+    (*klass)->member_dispose = member_dispose;
+    (*klass)->member_restore = member_restore;
+    (*klass)->first = NULL;
+    (*klass)->last = NULL;
+    (*klass)->obtain = swapin;
+    (*klass)->release = swapout;
     (*klass)->store = fopen(fname, "w+");
     pthread_mutex_init(&(*klass)->mutex, NULL);
 }
@@ -228,12 +255,12 @@ void
 collection_add(collection_t collection, void *data)
 {
     void* ptr;
-    obtain(collection);
+    collection->method->obtain(collection);
     CHECKALLOC(ptr = realloc(collection->array, (collection->count+1)*collection->size));
     collection->array = ptr;
     memcpy(collection->array + collection->size * collection->count, data, collection->size);
     collection->count += 1;
-    release(collection);
+    collection->method->release(collection);
 }
 
 void
@@ -242,7 +269,7 @@ collection_del_index(collection_t collection, int index)
     void* ptr;
     if (index<0 || index >= collection->count)
         return;
-    obtain(collection);
+    collection->method->obtain(collection);
     collection->method->member_destroy(collection->method->cargo, collection->array + collection->size * index);
     memmove(collection->array + collection->size * index, &collection->array + collection->size * (index + 1), (collection->count - index) * collection->size);
     collection->count -= 1;
@@ -253,7 +280,7 @@ collection_del_index(collection_t collection, int index)
         free(collection->array);
         collection->array = NULL;
     }
-    release(collection);
+    collection->method->release(collection);
 }
 
 void
@@ -266,14 +293,14 @@ void*
 collection_iterator(collection_t collection)
 {
     if(collection->iterator < 0) {
-        obtain(collection);
+        collection->method->obtain(collection);
         collection->iterator = collection->count;
     }
     collection->iterator -= 1;
     if(collection->iterator >= 0) {
         return collection->array + collection->iterator;
     } else {
-        release(collection);
+        collection->method->release(collection);
         return NULL;
     }
 }
