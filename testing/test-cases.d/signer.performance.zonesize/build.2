@@ -1,0 +1,521 @@
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC ~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+start_test: Starting test for opendnssec on slackware
+##### Running test signer.performance.zonesize ...
+syslog_trace: trace started (pid 4807) using /usr/bin/stdbuf -oL /usr/bin/tail --follow=name -n 0 /var/log/opendnssec
+ods_reset_env: resetting opendnssec environment (no_enforcer_stop=)
+log_this: logging softhsm-init-token-0 for command: softhsm --init-token --slot 0 --label OpenDNSSEC --pin 1234 --so-pin 1234
+log_grep: greping in softhsm-init-token-0 for: The token has been initialized.
+log_this: logging ods-enforcer-setup for command: ods-enforcer-db-setup
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC ~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+start_test: Starting test for opendnssec on slackware
+##### Running test signer.performance.zonesize ...
+syslog_trace: trace started (pid 5010) using /usr/bin/stdbuf -oL /usr/bin/tail --follow=name -n 0 /var/log/opendnssec
+ods_reset_env: resetting opendnssec environment (no_enforcer_stop=)
+log_this: logging softhsm-init-token-0 for command: softhsm --init-token --slot 0 --label OpenDNSSEC --pin 1234 --so-pin 1234
+log_grep: greping in softhsm-init-token-0 for: The token has been initialized.
+log_this: logging ods-enforcer-setup for command: ods-enforcer-db-setup
+ods_setup_env: setting up opendnssec environment
+ods_start_enforcer: Starting ods-enforcer now...
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_start with timeout 90 for command: ods-control enforcer start
+ods_enforcer_waitfor_starts: Waiting for the 1 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_enforcer: ods-enforcer started OK
+log_this: logging ods-enforcer-setup for command: ods-enforcer policy import
+log_this: logging ods-enforcer-setup for command: ods-enforcer zonelist import
+log_this: logging idle for command: ods-enforcer queue
+log_this: logging zones for command: ods-enforcer zone list
+log_this: logging ods-enforcer-setup for command: ods-enforcer signconf
+ods_setup_env: setup complete
+ods_stop_enforcer: Stopping ods-enforcer now...
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_stop with timeout 90 for command: ods-control enforcer stop
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_enforcer: ods-enforcer stopped OK
+ods_setup_env: setup env succeeded!
+ods_start_ods-control: Starting with ods-control now...
+ods_signer_count_starts: Checking how many times signer has started already
+ods_signer_count_starts: Signer has started 0 times so far
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 1 times so far
+log_this_timeout: logging ods_ods-control_start with timeout 90 for command: ods-control start
+ods_signer_waitfor_starts: Waiting for latest start of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-signerd: .*\[engine\] signer started
+ods_enforcer_waitfor_starts: Waiting for the 2 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_ods-control: ods-control started OK
+zone add completed in 2 seconds.
+Zone z50000 added successfully
+syslog_waitfor: waiting for syslog to contain (timeout 20000): ods-signerd: .*\[STATS\] z50000 
+STATISTICS	50000	671060	20
+ods_stop_ods-control: Stopping with ods-control now...
+ods_signer_count_stops: Checking how many times signer has stopped already
+ods_signer_count_stops: Signer has stopped 0 times so far
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 1 times so far
+log_this_timeout: logging ods_ods-control_stop with timeout 90 for command: ods-control stop
+ods_signer_waitfor_stops: Waiting for latest stop of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 900): ods-signerd: .*\[engine\] signer shutdown
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 900): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_ods-control: waiting for signer to terminate...
+ods_stop_ods-control: ods-control stopped OK
+syslog_stop: trace stopped
+##### Test signer.performance.zonesize ... OK
+../../lib.sh: line 1361:  5010 Terminated              $TAIL_FOLLOW "$syslog_file" > "_syslog.$BUILD_TAG"
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC ~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+start_test: Starting test for opendnssec on slackware
+##### Running test signer.performance.zonesize ...
+syslog_trace: trace started (pid 5488) using /usr/bin/stdbuf -oL /usr/bin/tail --follow=name -n 0 /var/log/opendnssec
+ods_reset_env: resetting opendnssec environment (no_enforcer_stop=)
+log_this: logging softhsm-init-token-0 for command: softhsm --init-token --slot 0 --label OpenDNSSEC --pin 1234 --so-pin 1234
+log_grep: greping in softhsm-init-token-0 for: The token has been initialized.
+log_this: logging ods-enforcer-setup for command: ods-enforcer-db-setup
+ods_setup_env: setting up opendnssec environment
+ods_start_enforcer: Starting ods-enforcer now...
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_start with timeout 90 for command: ods-control enforcer start
+ods_enforcer_waitfor_starts: Waiting for the 1 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_enforcer: ods-enforcer started OK
+log_this: logging ods-enforcer-setup for command: ods-enforcer policy import
+log_this: logging ods-enforcer-setup for command: ods-enforcer zonelist import
+log_this: logging idle for command: ods-enforcer queue
+log_this: logging zones for command: ods-enforcer zone list
+log_this: logging ods-enforcer-setup for command: ods-enforcer signconf
+ods_setup_env: setup complete
+ods_stop_enforcer: Stopping ods-enforcer now...
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_stop with timeout 90 for command: ods-control enforcer stop
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_enforcer: ods-enforcer stopped OK
+ods_setup_env: setup env succeeded!
+ods_start_ods-control: Starting with ods-control now...
+ods_signer_count_starts: Checking how many times signer has started already
+ods_signer_count_starts: Signer has started 0 times so far
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 1 times so far
+log_this_timeout: logging ods_ods-control_start with timeout 90 for command: ods-control start
+ods_signer_waitfor_starts: Waiting for latest start of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-signerd: .*\[engine\] signer started
+ods_enforcer_waitfor_starts: Waiting for the 2 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_ods-control: ods-control started OK
+zone add completed in 1 seconds.
+Zone z100000 added successfully
+syslog_waitfor: waiting for syslog to contain (timeout 20000): ods-signerd: .*\[STATS\] z100000 
+STATISTICS	100000	802132	27
+ods_stop_ods-control: Stopping with ods-control now...
+ods_signer_count_stops: Checking how many times signer has stopped already
+ods_signer_count_stops: Signer has stopped 0 times so far
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 1 times so far
+log_this_timeout: logging ods_ods-control_stop with timeout 90 for command: ods-control stop
+ods_signer_waitfor_stops: Waiting for latest stop of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 900): ods-signerd: .*\[engine\] signer shutdown
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 900): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_ods-control: ods-control stopped OK
+syslog_stop: trace stopped
+##### Test signer.performance.zonesize ... OK
+../../lib.sh: line 1361:  5488 Terminated              $TAIL_FOLLOW "$syslog_file" > "_syslog.$BUILD_TAG"
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC ~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+start_test: Starting test for opendnssec on slackware
+##### Running test signer.performance.zonesize ...
+syslog_trace: trace started (pid 6006) using /usr/bin/stdbuf -oL /usr/bin/tail --follow=name -n 0 /var/log/opendnssec
+ods_reset_env: resetting opendnssec environment (no_enforcer_stop=)
+log_this: logging softhsm-init-token-0 for command: softhsm --init-token --slot 0 --label OpenDNSSEC --pin 1234 --so-pin 1234
+log_grep: greping in softhsm-init-token-0 for: The token has been initialized.
+log_this: logging ods-enforcer-setup for command: ods-enforcer-db-setup
+ods_setup_env: setting up opendnssec environment
+ods_start_enforcer: Starting ods-enforcer now...
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_start with timeout 90 for command: ods-control enforcer start
+ods_enforcer_waitfor_starts: Waiting for the 1 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_enforcer: ods-enforcer started OK
+log_this: logging ods-enforcer-setup for command: ods-enforcer policy import
+log_this: logging ods-enforcer-setup for command: ods-enforcer zonelist import
+log_this: logging idle for command: ods-enforcer queue
+log_this: logging zones for command: ods-enforcer zone list
+log_this: logging ods-enforcer-setup for command: ods-enforcer signconf
+ods_setup_env: setup complete
+ods_stop_enforcer: Stopping ods-enforcer now...
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_stop with timeout 90 for command: ods-control enforcer stop
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_enforcer: ods-enforcer stopped OK
+ods_setup_env: setup env succeeded!
+ods_start_ods-control: Starting with ods-control now...
+ods_signer_count_starts: Checking how many times signer has started already
+ods_signer_count_starts: Signer has started 0 times so far
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 1 times so far
+log_this_timeout: logging ods_ods-control_start with timeout 90 for command: ods-control start
+ods_signer_waitfor_starts: Waiting for latest start of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-signerd: .*\[engine\] signer started
+ods_enforcer_waitfor_starts: Waiting for the 2 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_ods-control: ods-control started OK
+zone add completed in 1 seconds.
+Zone z250000 added successfully
+syslog_waitfor: waiting for syslog to contain (timeout 20000): ods-signerd: .*\[STATS\] z250000 
+STATISTICS	250000	1391956	63
+ods_stop_ods-control: Stopping with ods-control now...
+ods_signer_count_stops: Checking how many times signer has stopped already
+ods_signer_count_stops: Signer has stopped 0 times so far
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 1 times so far
+log_this_timeout: logging ods_ods-control_stop with timeout 90 for command: ods-control stop
+ods_signer_waitfor_stops: Waiting for latest stop of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 900): ods-signerd: .*\[engine\] signer shutdown
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 900): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_ods-control: waiting for signer to terminate...
+ods_stop_ods-control: ods-control stopped OK
+syslog_stop: trace stopped
+##### Test signer.performance.zonesize ... OK
+../../lib.sh: line 1361:  6006 Terminated              $TAIL_FOLLOW "$syslog_file" > "_syslog.$BUILD_TAG"
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC ~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+start_test: Starting test for opendnssec on slackware
+##### Running test signer.performance.zonesize ...
+syslog_trace: trace started (pid 6591) using /usr/bin/stdbuf -oL /usr/bin/tail --follow=name -n 0 /var/log/opendnssec
+ods_reset_env: resetting opendnssec environment (no_enforcer_stop=)
+log_this: logging softhsm-init-token-0 for command: softhsm --init-token --slot 0 --label OpenDNSSEC --pin 1234 --so-pin 1234
+log_grep: greping in softhsm-init-token-0 for: The token has been initialized.
+log_this: logging ods-enforcer-setup for command: ods-enforcer-db-setup
+ods_setup_env: setting up opendnssec environment
+ods_start_enforcer: Starting ods-enforcer now...
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_start with timeout 90 for command: ods-control enforcer start
+ods_enforcer_waitfor_starts: Waiting for the 1 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_enforcer: ods-enforcer started OK
+log_this: logging ods-enforcer-setup for command: ods-enforcer policy import
+log_this: logging ods-enforcer-setup for command: ods-enforcer zonelist import
+log_this: logging idle for command: ods-enforcer queue
+log_this: logging zones for command: ods-enforcer zone list
+log_this: logging ods-enforcer-setup for command: ods-enforcer signconf
+ods_setup_env: setup complete
+ods_stop_enforcer: Stopping ods-enforcer now...
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_stop with timeout 90 for command: ods-control enforcer stop
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_enforcer: ods-enforcer stopped OK
+ods_setup_env: setup env succeeded!
+ods_start_ods-control: Starting with ods-control now...
+ods_signer_count_starts: Checking how many times signer has started already
+ods_signer_count_starts: Signer has started 0 times so far
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 1 times so far
+log_this_timeout: logging ods_ods-control_start with timeout 90 for command: ods-control start
+ods_signer_waitfor_starts: Waiting for latest start of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-signerd: .*\[engine\] signer started
+ods_enforcer_waitfor_starts: Waiting for the 2 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_ods-control: ods-control started OK
+zone add completed in 1 seconds.
+Zone z500000 added successfully
+syslog_waitfor: waiting for syslog to contain (timeout 20000): ods-signerd: .*\[STATS\] z500000 
+STATISTICS	500000	2440532	121
+ods_stop_ods-control: Stopping with ods-control now...
+ods_signer_count_stops: Checking how many times signer has stopped already
+ods_signer_count_stops: Signer has stopped 0 times so far
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 1 times so far
+log_this_timeout: logging ods_ods-control_stop with timeout 90 for command: ods-control stop
+ods_signer_waitfor_stops: Waiting for latest stop of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 900): ods-signerd: .*\[engine\] signer shutdown
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 900): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_ods-control: waiting for signer to terminate...
+ods_stop_ods-control: ods-control stopped OK
+syslog_stop: trace stopped
+##### Test signer.performance.zonesize ... OK
+../../lib.sh: line 1361:  6591 Terminated              $TAIL_FOLLOW "$syslog_file" > "_syslog.$BUILD_TAG"
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC ~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+start_test: Starting test for opendnssec on slackware
+##### Running test signer.performance.zonesize ...
+syslog_trace: trace started (pid 7312) using /usr/bin/stdbuf -oL /usr/bin/tail --follow=name -n 0 /var/log/opendnssec
+ods_reset_env: resetting opendnssec environment (no_enforcer_stop=)
+log_this: logging softhsm-init-token-0 for command: softhsm --init-token --slot 0 --label OpenDNSSEC --pin 1234 --so-pin 1234
+log_grep: greping in softhsm-init-token-0 for: The token has been initialized.
+log_this: logging ods-enforcer-setup for command: ods-enforcer-db-setup
+ods_setup_env: setting up opendnssec environment
+ods_start_enforcer: Starting ods-enforcer now...
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_start with timeout 90 for command: ods-control enforcer start
+ods_enforcer_waitfor_starts: Waiting for the 1 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_enforcer: ods-enforcer started OK
+log_this: logging ods-enforcer-setup for command: ods-enforcer policy import
+log_this: logging ods-enforcer-setup for command: ods-enforcer zonelist import
+log_this: logging idle for command: ods-enforcer queue
+log_this: logging zones for command: ods-enforcer zone list
+log_this: logging ods-enforcer-setup for command: ods-enforcer signconf
+ods_setup_env: setup complete
+ods_stop_enforcer: Stopping ods-enforcer now...
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_stop with timeout 90 for command: ods-control enforcer stop
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_enforcer: ods-enforcer stopped OK
+ods_setup_env: setup env succeeded!
+ods_start_ods-control: Starting with ods-control now...
+ods_signer_count_starts: Checking how many times signer has started already
+ods_signer_count_starts: Signer has started 0 times so far
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 1 times so far
+log_this_timeout: logging ods_ods-control_start with timeout 90 for command: ods-control start
+ods_signer_waitfor_starts: Waiting for latest start of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-signerd: .*\[engine\] signer started
+ods_enforcer_waitfor_starts: Waiting for the 2 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_ods-control: ods-control started OK
+zone add completed in 2 seconds.
+Zone z1000000 added successfully
+syslog_waitfor: waiting for syslog to contain (timeout 20000): ods-signerd: .*\[STATS\] z1000000 
+STATISTICS	1000000	4283736	248
+ods_stop_ods-control: Stopping with ods-control now...
+ods_signer_count_stops: Checking how many times signer has stopped already
+ods_signer_count_stops: Signer has stopped 0 times so far
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 1 times so far
+log_this_timeout: logging ods_ods-control_stop with timeout 90 for command: ods-control stop
+ods_signer_waitfor_stops: Waiting for latest stop of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 900): ods-signerd: .*\[engine\] signer shutdown
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 900): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_ods-control: waiting for signer to terminate...
+ods_stop_ods-control: ods-control stopped OK
+syslog_stop: trace stopped
+##### Test signer.performance.zonesize ... OK
+../../lib.sh: line 1361:  7312 Terminated              $TAIL_FOLLOW "$syslog_file" > "_syslog.$BUILD_TAG"
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC ~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+start_test: Starting test for opendnssec on slackware
+##### Running test signer.performance.zonesize ...
+syslog_trace: trace started (pid 8360) using /usr/bin/stdbuf -oL /usr/bin/tail --follow=name -n 0 /var/log/opendnssec
+ods_reset_env: resetting opendnssec environment (no_enforcer_stop=)
+log_this: logging softhsm-init-token-0 for command: softhsm --init-token --slot 0 --label OpenDNSSEC --pin 1234 --so-pin 1234
+log_grep: greping in softhsm-init-token-0 for: The token has been initialized.
+log_this: logging ods-enforcer-setup for command: ods-enforcer-db-setup
+ods_setup_env: setting up opendnssec environment
+ods_start_enforcer: Starting ods-enforcer now...
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_start with timeout 90 for command: ods-control enforcer start
+ods_enforcer_waitfor_starts: Waiting for the 1 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_enforcer: ods-enforcer started OK
+log_this: logging ods-enforcer-setup for command: ods-enforcer policy import
+log_this: logging ods-enforcer-setup for command: ods-enforcer zonelist import
+log_this: logging idle for command: ods-enforcer queue
+log_this: logging zones for command: ods-enforcer zone list
+log_this: logging ods-enforcer-setup for command: ods-enforcer signconf
+ods_setup_env: setup complete
+ods_stop_enforcer: Stopping ods-enforcer now...
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_stop with timeout 90 for command: ods-control enforcer stop
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_enforcer: ods-enforcer stopped OK
+ods_setup_env: setup env succeeded!
+ods_start_ods-control: Starting with ods-control now...
+ods_signer_count_starts: Checking how many times signer has started already
+ods_signer_count_starts: Signer has started 0 times so far
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 1 times so far
+log_this_timeout: logging ods_ods-control_start with timeout 90 for command: ods-control start
+ods_signer_waitfor_starts: Waiting for latest start of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-signerd: .*\[engine\] signer started
+ods_enforcer_waitfor_starts: Waiting for the 2 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_ods-control: ods-control started OK
+zone add completed in 1 seconds.
+Zone z2500000 added successfully
+syslog_waitfor: waiting for syslog to contain (timeout 20000): ods-signerd: .*\[STATS\] z2500000 
+STATISTICS	2500000	9723224	595
+ods_stop_ods-control: Stopping with ods-control now...
+ods_signer_count_stops: Checking how many times signer has stopped already
+ods_signer_count_stops: Signer has stopped 0 times so far
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 1 times so far
+log_this_timeout: logging ods_ods-control_stop with timeout 90 for command: ods-control stop
+ods_signer_waitfor_stops: Waiting for latest stop of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 900): ods-signerd: .*\[engine\] signer shutdown
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 900): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_ods-control: waiting for signer to terminate...
+ods_stop_ods-control: ods-control stopped OK
+syslog_stop: trace stopped
+##### Test signer.performance.zonesize ... OK
+../../lib.sh: line 1361:  8360 Terminated              $TAIL_FOLLOW "$syslog_file" > "_syslog.$BUILD_TAG"
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC ~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+start_test: Starting test for opendnssec on slackware
+##### Running test signer.performance.zonesize ...
+syslog_trace: trace started (pid 10863) using /usr/bin/stdbuf -oL /usr/bin/tail --follow=name -n 0 /var/log/opendnssec
+ods_reset_env: resetting opendnssec environment (no_enforcer_stop=)
+log_this: logging softhsm-init-token-0 for command: softhsm --init-token --slot 0 --label OpenDNSSEC --pin 1234 --so-pin 1234
+log_grep: greping in softhsm-init-token-0 for: The token has been initialized.
+log_this: logging ods-enforcer-setup for command: ods-enforcer-db-setup
+ods_setup_env: setting up opendnssec environment
+ods_start_enforcer: Starting ods-enforcer now...
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_start with timeout 90 for command: ods-control enforcer start
+ods_enforcer_waitfor_starts: Waiting for the 1 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_enforcer: ods-enforcer started OK
+log_this: logging ods-enforcer-setup for command: ods-enforcer policy import
+log_this: logging ods-enforcer-setup for command: ods-enforcer zonelist import
+log_this: logging idle for command: ods-enforcer queue
+log_this: logging zones for command: ods-enforcer zone list
+log_this: logging ods-enforcer-setup for command: ods-enforcer signconf
+ods_setup_env: setup complete
+ods_stop_enforcer: Stopping ods-enforcer now...
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_stop with timeout 90 for command: ods-control enforcer stop
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_enforcer: ods-enforcer stopped OK
+ods_setup_env: setup env succeeded!
+ods_start_ods-control: Starting with ods-control now...
+ods_signer_count_starts: Checking how many times signer has started already
+ods_signer_count_starts: Signer has started 0 times so far
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 1 times so far
+log_this_timeout: logging ods_ods-control_start with timeout 90 for command: ods-control start
+ods_signer_waitfor_starts: Waiting for latest start of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-signerd: .*\[engine\] signer started
+ods_enforcer_waitfor_starts: Waiting for the 2 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_ods-control: ods-control started OK
+zone add completed in 2 seconds.
+Zone z4000000 added successfully
+syslog_waitfor: waiting for syslog to contain (timeout 20000): ods-signerd: .*\[STATS\] z4000000 
+STATISTICS	4000000	15097176	1000
+ods_stop_ods-control: Stopping with ods-control now...
+ods_signer_count_stops: Checking how many times signer has stopped already
+ods_signer_count_stops: Signer has stopped 0 times so far
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 1 times so far
+log_this_timeout: logging ods_ods-control_stop with timeout 90 for command: ods-control stop
+ods_signer_waitfor_stops: Waiting for latest stop of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 900): ods-signerd: .*\[engine\] signer shutdown
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 900): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_ods-control: waiting for signer to terminate...
+ods_stop_ods-control: ods-signerd process is still running
+ods_kill: Killing OpenDNSSEC
+Stopping enforcer..
+Unable to connect to engine. connect() failed: No such file or directory ("/home/berry/workspace/root/OpenDNSSEC/var/run/opendnssec/enforcer.sock")
+Stopping signer engine...
+Unable to connect to engine: connect() failed: No such file or directory
+syslog_stop: trace stopped
+##### Test signer.performance.zonesize ... FAILED!
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC ~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing ~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+~/workspace/OpenDNSSEC/testing/test-cases.d/signer.performance.zonesize
+start_test: Starting test for opendnssec on slackware
+##### Running test signer.performance.zonesize ...
+syslog_trace: trace started (pid 14134) using /usr/bin/stdbuf -oL /usr/bin/tail --follow=name -n 0 /var/log/opendnssec
+ods_reset_env: resetting opendnssec environment (no_enforcer_stop=)
+log_this: logging softhsm-init-token-0 for command: softhsm --init-token --slot 0 --label OpenDNSSEC --pin 1234 --so-pin 1234
+log_grep: greping in softhsm-init-token-0 for: The token has been initialized.
+log_this: logging ods-enforcer-setup for command: ods-enforcer-db-setup
+ods_setup_env: setting up opendnssec environment
+ods_start_enforcer: Starting ods-enforcer now...
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_start with timeout 90 for command: ods-control enforcer start
+ods_enforcer_waitfor_starts: Waiting for the 1 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_enforcer: ods-enforcer started OK
+log_this: logging ods-enforcer-setup for command: ods-enforcer policy import
+log_this: logging ods-enforcer-setup for command: ods-enforcer zonelist import
+log_this: logging idle for command: ods-enforcer queue
+log_this: logging zones for command: ods-enforcer zone list
+log_this: logging ods-enforcer-setup for command: ods-enforcer signconf
+ods_setup_env: setup complete
+ods_stop_enforcer: Stopping ods-enforcer now...
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 0 times so far
+log_this_timeout: logging ods_ods-control_enforcer_stop with timeout 90 for command: ods-control enforcer stop
+ods_enforcer_waitfor_stops: Waiting for latest stop of enforcer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer shutdown
+ods_stop_enforcer: ods-enforcer stopped OK
+ods_setup_env: setup env succeeded!
+ods_start_ods-control: Starting with ods-control now...
+ods_signer_count_starts: Checking how many times signer has started already
+ods_signer_count_starts: Signer has started 0 times so far
+ods_enforcer_count_starts: Checking how many times enforcer has started already
+ods_enforcer_count_starts: Enforcer has started 1 times so far
+log_this_timeout: logging ods_ods-control_start with timeout 90 for command: ods-control start
+ods_signer_waitfor_starts: Waiting for latest start of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 90): ods-signerd: .*\[engine\] signer started
+ods_enforcer_waitfor_starts: Waiting for the 2 start of enforcer
+syslog_waitfor_count: waiting for syslog to contain 2 counts of (timeout 90): ods-enforcerd: .*\[engine\] enforcer started
+ods_start_ods-control: ods-control started OK
+zone add completed in 1 seconds.
+Zone z5000000 added successfully
+syslog_waitfor: waiting for syslog to contain (timeout 20000): ods-signerd: .*\[STATS\] z5000000 
+STATISTICS	5000000	18701656	2180
+ods_stop_ods-control: Stopping with ods-control now...
+ods_signer_count_stops: Checking how many times signer has stopped already
+ods_signer_count_stops: Signer has stopped 0 times so far
+ods_enforcer_count_stops: Checking how many times enforcer has stopped already
+ods_enforcer_count_stops: Enforcer has stopped 1 times so far
+log_this_timeout: logging ods_ods-control_stop with timeout 90 for command: ods-control stop
+ods_signer_waitfor_stops: Waiting for latest stop of signer
+syslog_waitfor_count: waiting for syslog to contain 1 counts of (timeout 900): ods-signerd: .*\[engine\] signer shutdown
+ods_signer_waitfor_stops: ods-signerd stop count timed out
+ods_stop_ods-control: ods-control stopped FAILED
+ods_kill: Killing OpenDNSSEC
+Stopping enforcer..
+ctrl completed in 0 seconds.
+Engine shut down.
+Stopping signer engine...
+Engine shut down.
+syslog_stop: trace stopped
+##### Test signer.performance.zonesize ... FAILED!

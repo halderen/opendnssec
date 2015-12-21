@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 # ulimit -d 8388608
+OPENDNSSEC_OPTION_sigstore=0
+export OPENDNSSEC_OPTION_sigstore
 
 size=$3
 if [ "$size" -eq "$size" ] 2>/dev/null; then
