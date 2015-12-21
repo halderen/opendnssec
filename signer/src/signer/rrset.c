@@ -180,7 +180,6 @@ static int
 memberdestroy(void* member)
 {
     rrsig_type* sig = (rrsig_type*) member;
-    (void)dummy;
     free((void*) sig->key_locator);
     sig->key_locator = NULL;
     /* The rrs may still be in use by IXFRs so cannot do ldns_rr_free(sig->rr); */
@@ -193,7 +192,6 @@ static int
 memberdispose(void* member, FILE* fp)
 {
     rrsig_type* sig = (rrsig_type*) member;
-    (void)dummy;
     ldns_rr_print(fp, sig->rr);
     ldns_rr_free(sig->rr);
     sig->rr = NULL;
@@ -208,7 +206,6 @@ memberrestore(void* member, FILE* fp)
     ldns_rdf* prev = NULL;
     ldns_rdf* origin = NULL;
     uint32_t defaulttl = 0;
-    (void)dummy;
     if((status = ldns_rr_new_frm_fp(&sig->rr, fp, &defaulttl, &origin, &prev)) != LDNS_STATUS_OK) {
         ods_log_error("[%s] unable to recreate RRset: %s", rrset_str, ldns_get_errorstr_by_id(status));
         return 1;
