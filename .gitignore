@@ -122,5 +122,5 @@ common/extsort.h
 libhsm/src/lib/libhsm.c.bak
 log_user
 main.c
-nbproject/
 test-driver
+nbproject

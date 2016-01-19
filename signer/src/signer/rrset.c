@@ -180,7 +180,8 @@ memberdestroy(void* member)
 {
     rrsig_type* sig = (rrsig_type*) member;
     free((void*) sig->key_locator);
-    ldns_rr_free(sig->rr);
+    sig->key_locator = NULL;
+    /* The rrs may still be in use by IXFRs so cannot do ldns_rr_free(sig->rr); */
     sig->owner = NULL;
     return 0;
 }
