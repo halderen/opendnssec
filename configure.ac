@@ -2,10 +2,10 @@ m4_sinclude([version.m4])
 
 AC_PREREQ(2.61)
 AC_INIT([opendnssec], OPENDNSSEC_VERSION, [http://bugs.opendnssec.org/])
-
-AM_INIT_AUTOMAKE
+AM_DEFAULT_VERBOSITY="0"
+AC_SUBST([AM_DEFAULT_VERBOSITY])
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE(foreign)
 ACX_PREFIXHACK
 
 OPENDNSSEC_COMMON
@@ -18,7 +18,6 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
 AC_PROG_MAKE_SET
-AC_PROG_RANLIB
 AC_PROG_CXX
 
 # additional programs
@@ -28,28 +27,16 @@ AC_PATH_PROG(JAVA, java)
 AC_PATH_PROG(CP, cp)
 AC_DEFINE_UNQUOTED(CP_COMMAND, "$CP", [System cp(3) command])
 
-# building
+# building, compiler flags
+AC_PROG_CC_STDC
+#AC_PROG_CC_C99
+ACX_PEDANTIC
+AX_COMPILER_FLAGS_CFLAGS
+AX_CFLAGS_STRICT_PROTOTYPES
+AX_C___ATTRIBUTE__
 ACX_ARG_RPATH
 ACX_RUNTIME_PATH_ADD
-ACX_PEDANTIC
-ACX_STRICT
-AX_C___ATTRIBUTE__
-
-# compiler flags
-CHECK_COMPILER_FLAG(std=c99, [C99FLAG="-std=c99"])
-CHECK_COMPILER_FLAG(xc99, [C99FLAG="-xc99"])
-CHECK_COMPILER_FLAG_NEEDED(-D__EXTENSIONS__,
-[
-#include "confdefs.h"
-#include <stdlib.h>
-#include <unistd.h>
-int test() {
-	int a;
-	char **opts = NULL;
-	a = getopt(2, opts, "a");
-	return a;
-}
-], [CFLAGS="-D__EXTENSIONS__ $CFLAGS"])
+AX_CFLAGS_WARN_ALL
 
 # checks for header files
 AC_HEADER_STDC
@@ -89,7 +76,7 @@ ACX_PTHREAD(
     LDFLAGS="$CFLAGS $PTHREAD_CFLAGS $LDFLAGS $PTHREAD_LIBS $LIBS"])
 
 LIBS="$PTHREAD_LIBS $LIBS"
-CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+CFLAGS="$CFLAGS $PTHREAD_CFLAGS $WARN_CFLAGS"
 CC="$PTHREAD_CC"
 
 # checks for library functions
@@ -229,7 +216,6 @@ AC_CONFIG_FILES([
 	conf/zonelist.xml
 	enforcer/Makefile
 	enforcer/src/Makefile
-	enforcer/src/utils/Makefile
 	enforcer/man/Makefile
 	enforcer/src/db/test/Makefile
 	enforcer/man/ods-enforcer.8

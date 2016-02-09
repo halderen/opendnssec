@@ -47,6 +47,7 @@ struct signconf_struct {
     duration_type* sig_refresh_interval;
     duration_type* sig_validity_default;
     duration_type* sig_validity_denial;
+    duration_type* sig_validity_keyset;
     duration_type* sig_jitter;
     duration_type* sig_inception_offset;
     /* Denial of existence */
@@ -59,6 +60,7 @@ struct signconf_struct {
     nsec3params_type* nsec3params;
     /* Keys */
     duration_type* dnskey_ttl;
+    const char** dnskey_signature; /* may be NULL and must be NULL terminated */
     keylist_type* keys;
     /* Source of authority */
     duration_type* soa_ttl;

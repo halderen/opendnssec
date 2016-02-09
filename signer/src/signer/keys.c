@@ -92,14 +92,12 @@ keylist_lookup_by_locator(keylist_type* kl, const char* locator)
  *
  */
 key_type*
-keylist_push(keylist_type* kl, const char* locator,
+keylist_push(keylist_type* kl, const char* locator, const char* resourcerecord,
     uint8_t algorithm, uint32_t flags, int publish, int ksk, int zsk)
 {
     key_type* keys_old = NULL;
 
     ods_log_assert(kl);
-    ods_log_assert(locator);
-    ods_log_debug("[%s] add locator %s", key_str, locator);
 
     keys_old = kl->keys;
     CHECKALLOC(kl->keys = (key_type*) malloc((kl->count + 1) * sizeof(key_type)));
@@ -113,6 +111,7 @@ keylist_push(keylist_type* kl, const char* locator,
     free(keys_old);
     kl->count++;
     kl->keys[kl->count -1].locator = locator;
+    kl->keys[kl->count -1].resourcerecord = resourcerecord;
     kl->keys[kl->count -1].algorithm = algorithm;
     kl->keys[kl->count -1].flags = flags;
     kl->keys[kl->count -1].publish = publish;
@@ -204,9 +203,8 @@ key_backup(FILE* fd, key_type* key, const char* version)
     if (!fd || !key) {
         return;
     }
-    fprintf(fd, ";;Key: locator %s algorithm %u flags %u publish %i ksk %i "
-        "zsk %i\n", key->locator, (unsigned) key->algorithm,
-        (unsigned) key->flags, key->publish, key->ksk, key->zsk);
+    fprintf(fd, ";;Key: locator %s algorithm %u flags %u publish %i ksk %i zsk %i keytag %d\n", key->locator, (unsigned) key->algorithm,
+        (unsigned) key->flags, key->publish, key->ksk, key->zsk, ldns_calc_keytag(key->dnskey));
     if (strcmp(version, ODS_SE_FILE_MAGIC_V2) == 0) {
         if (key->dnskey) {
             (void)util_rr_print(fd, key->dnskey);
@@ -224,11 +222,14 @@ key_type*
 key_recover2(FILE* fd, keylist_type* kl)
 {
     const char* locator = NULL;
+    const char* resourcerecord = NULL;
     uint8_t algorithm = 0;
     uint32_t flags = 0;
     int publish = 0;
     int ksk = 0;
     int zsk = 0;
+    int keytag = 0; /* We are not actually interested but we must
+        parse it to continue correctly in the stream */
 
     ods_log_assert(fd);
 
@@ -243,7 +244,9 @@ key_recover2(FILE* fd, keylist_type* kl)
         !backup_read_check_str(fd, "ksk") ||
         !backup_read_int(fd, &ksk) ||
         !backup_read_check_str(fd, "zsk") ||
-        !backup_read_int(fd, &zsk)) {
+        !backup_read_int(fd, &zsk) ||
+        !backup_read_check_str(fd, "keytag") ||
+        !backup_read_int(fd, &keytag)) {
         if (locator) {
            free((void*)locator);
            locator = NULL;
@@ -251,7 +254,7 @@ key_recover2(FILE* fd, keylist_type* kl)
         return NULL;
     }
     /* key ok */
-    return keylist_push(kl, locator, algorithm, flags, publish, ksk, zsk);
+    return keylist_push(kl, locator, resourcerecord, algorithm, flags, publish, ksk, zsk);
 }
 
 
