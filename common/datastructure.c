@@ -265,7 +265,6 @@ collection_del_index(collection_t collection, int index)
         return;
     method->obtain(collection);
     method->member_destroy(&collection->array[collection->size * index]);
-    memmove(collection->array + collection->size * index, &collection->array + collection->size * (index + 1), (collection->count - index) * collection->size);
     collection->count -= 1;
     memmove(&collection->array[collection->size * index], &collection->array[collection->size * (index + 1)], (collection->count - index) * collection->size);
     if (collection->count > 0) {
