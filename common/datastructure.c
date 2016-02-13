@@ -46,7 +46,6 @@ struct collection_class_struct {
     struct collection_instance_struct* last;
     int count;
     int cachesize;
-    int usemutex;
 };
 
 struct collection_instance_struct {
@@ -103,8 +102,7 @@ assure(collection_t collection)
         /* most recent item optimization, nothing to do */
         return;
     }
-    if(method->usemutex)
-        pthread_mutex_lock(&method->mutex);
+    pthread_mutex_lock(&method->mutex);
     if(collection != collection->next && collection->prev != NULL && collection->next != NULL) {
         /* item in contained in chain, remove from current position */
         method->count--;
@@ -143,8 +141,7 @@ assure(collection_t collection)
         least->prev = least;
         least->next = least;
     }
-    if(method->usemutex)
-        pthread_mutex_unlock(&method->mutex);
+    pthread_mutex_unlock(&method->mutex);
     if(needsswapin) {
         swapin(collection);
     }
@@ -194,24 +191,12 @@ collection_class_create(collection_class* method, char* fname,
     configoption = getenv("OPENDNSSEC_OPTION_sigstore");
     if(configoption != NULL) {
         cachesize = strtol(configoption, &endptr, 0);
-        if(endptr != configoption) {
+        if(endptr != configoption && cachesize > 0) {
             (*method)->store = fopen(fname, "w+");
-            (*method)->usemutex = 0;
-            if (cachesize == 0) {
-                (*method)->obtain = swapin;
-                (*method)->release = swapout;
-            } else if(cachesize > 0) {
-                (*method)->cachesize = cachesize;
-                pthread_mutex_init(&(*method)->mutex, NULL);
-                (*method)->obtain = obtain;
-                (*method)->release = release;
-            } else if(cachesize < 0) {
-                (*method)->cachesize = -cachesize;
-                pthread_mutex_init(&(*method)->mutex, NULL);
-                (*method)->usemutex = 1;
-                (*method)->obtain = obtain;
-                (*method)->release = release;
-            }
+            (*method)->cachesize = cachesize;
+            pthread_mutex_init(&(*method)->mutex, NULL);
+            (*method)->obtain = obtain;
+            (*method)->release = release;
         }
     }
 }
