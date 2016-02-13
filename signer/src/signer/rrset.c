@@ -242,7 +242,7 @@ rrset_create(zone_type* zone, ldns_rr_type type)
 }
 
 collection_class
-rrset_store_initialize()
+rrset_store_initialize(char* filename)
 {
     collection_class klass;
     collection_class_create(&klass, filename, memberdestroy, memberdispose, memberrestore);

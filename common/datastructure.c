@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 NLNet Labs. All rights reserved.
+ * Copyright (c) 2015-2016 NLNet Labs. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,6 +46,7 @@ struct collection_class_struct {
     struct collection_instance_struct* last;
     int count;
     int cachesize;
+    int usemutex;
 };
 
 struct collection_instance_struct {
@@ -67,7 +68,7 @@ swapin(collection_t collection)
     if(fseek(method->store, collection->location, SEEK_SET))
         return 1;
     for(i=0; i<collection->count; i++) {
-        if(method->member_restore(collection->array + collection->size * i, method->store))
+        if(method->member_restore(&collection->array[collection->size * i], method->store))
             return 1;
     }
     return 0;
@@ -78,12 +79,14 @@ swapout(collection_t collection)
 {
     int i;
     collection_class method = collection->method;
-    if(fseek(method->store, 0, SEEK_END))
+    if(fseek(method->store, 0, SEEK_END)) {
         return 1;
+    }
     collection->location = ftell(method->store);
     for(i=0; i<collection->count; i++) {
-        if(method->member_dispose(collection->array + collection->size * i, method->store))
+        if(method->member_dispose(&collection->array[collection->size * i], method->store)) {
             return 1;
+        }
     }
     return 0;
 }
@@ -96,11 +99,13 @@ assure(collection_t collection)
     collection_class method = collection->method;
     if(collection->count == 0)
         needsswapin = 0;
-    if(method->first == collection)
+    if(method->first == collection) {
         /* most recent item optimization, nothing to do */
         return;
-    pthread_mutex_lock(&method->mutex);
-    if(collection->next != collection->prev && collection->next != NULL) {
+    }
+    if(method->usemutex)
+        pthread_mutex_lock(&method->mutex);
+    if(collection != collection->next && collection->prev != NULL && collection->next != NULL) {
         /* item in contained in chain, remove from current position */
         method->count--;
         if(collection->next == NULL) {
@@ -125,7 +130,7 @@ assure(collection_t collection)
     collection->prev = NULL;
     method->count++;
     /* look whether threshold is exceeded */
-    if(method->count > method->cachesize) {
+    while(method->count > method->cachesize) {
         least = method->last;
         swapout(least);
         method->count--;
@@ -135,9 +140,11 @@ assure(collection_t collection)
         } else
             least->prev->next = NULL;
         method->last = least->prev;
-        least->prev = least->next = least;
+        least->prev = least;
+        least->next = least;
     }
-    pthread_mutex_unlock(&method->mutex);
+    if(method->usemutex)
+        pthread_mutex_unlock(&method->mutex);
     if(needsswapin) {
         swapin(collection);
     }
@@ -180,6 +187,7 @@ collection_class_create(collection_class* method, char* fname,
     (*method)->obtain = noop;
     (*method)->release = noop;
     (*method)->cachesize = -1;
+    (*method)->count = 0;
     (*method)->first = NULL;
     (*method)->last = NULL;
     (*method)->store = NULL;
@@ -188,11 +196,19 @@ collection_class_create(collection_class* method, char* fname,
         cachesize = strtol(configoption, &endptr, 0);
         if(endptr != configoption) {
             (*method)->store = fopen(fname, "w+");
+            (*method)->usemutex = 0;
             if (cachesize == 0) {
                 (*method)->obtain = swapin;
                 (*method)->release = swapout;
             } else if(cachesize > 0) {
+                (*method)->cachesize = cachesize;
                 pthread_mutex_init(&(*method)->mutex, NULL);
+                (*method)->obtain = obtain;
+                (*method)->release = release;
+            } else if(cachesize < 0) {
+                (*method)->cachesize = -cachesize;
+                pthread_mutex_init(&(*method)->mutex, NULL);
+                (*method)->usemutex = 1;
                 (*method)->obtain = obtain;
                 (*method)->release = release;
             }
