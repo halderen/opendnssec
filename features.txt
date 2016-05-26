@@ -42,3 +42,30 @@ Other features have also been realized in this rewrite:
   from your zone.
 - And the enforcer daemon can now be queried and given commands using command
   line channel.
+
+
+
+
+opendnssec setup
+  validate config file
+  validate kasp
+  try to access hsm
+  try to access paths
+  verify database not already present or skip
+  optionally stop opendnssec
+  check opendnssec not running
+  only continue if above are valid
+  ask for permission
+  optionally clear hsm token
+  setup database
+  clear zones.xml
+  start opendnssec
+  import policy
+  stop opendnssec
+opendnssec start
+opendnssec stop
+opendnssec status
+opendnssec zone add | add zone <zone name> <policy>
+opendnssec zone del | zone delete | delete zone | del zone <zone name> 
+opendnssec update
+opendnssec 
