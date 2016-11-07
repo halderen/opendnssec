@@ -70,11 +70,6 @@ zone_create(char* name, ldns_rr_class klass)
         free(zone);
         return NULL;
     }
-    if (pthread_mutex_init(&zone->xfr_lock, NULL)) {
-        (void)pthread_mutex_destroy(&zone->zone_lock);
-        free(zone);
-        return NULL;
-    }
 
     zone->name = strdup(name);
     if (!zone->name) {
@@ -92,22 +87,11 @@ zone_create(char* name, ldns_rr_class klass)
     zone->notify_args = NULL;
     zone->policy_name = NULL;
     zone->signconf_filename = NULL;
-    zone->adinbound = NULL;
-    zone->adoutbound = NULL;
     zone->zl_status = ZONE_ZL_OK;
     zone->task = NULL;
-    zone->xfrd = NULL;
-    zone->notify = NULL;
     zone->db = namedb_create((void*)zone);
     if (!zone->db) {
         ods_log_error("[%s] unable to create zone %s: namedb_create() "
-            "failed", zone_str, name);
-        zone_cleanup(zone);
-        return NULL;
-    }
-    zone->ixfr = ixfr_create();
-    if (!zone->ixfr) {
-        ods_log_error("[%s] unable to create zone %s: ixfr_create() "
             "failed", zone_str, name);
         zone_cleanup(zone);
         return NULL;
@@ -845,19 +829,6 @@ zone_merge(zone_type* z1, zone_type* z2)
             z1->zl_status = ZONE_ZL_UPDATED;
         }
     }
-    /* adapters */
-    if (adapter_compare(z2->adinbound, z1->adinbound) != 0) {
-        adtmp = z2->adinbound;
-        z2->adinbound = z1->adinbound;
-        z1->adinbound = adtmp;
-        adtmp = NULL;
-    }
-    if (adapter_compare(z2->adoutbound, z1->adoutbound) != 0) {
-        adtmp = z2->adoutbound;
-        z2->adoutbound = z1->adoutbound;
-        z1->adoutbound = adtmp;
-        adtmp = NULL;
-    }
 }
 
 
@@ -872,12 +843,7 @@ zone_cleanup(zone_type* zone)
         return;
     }
     ldns_rdf_deep_free(zone->apex);
-    adapter_cleanup(zone->adinbound);
-    adapter_cleanup(zone->adoutbound);
     namedb_cleanup(zone->db);
-    ixfr_cleanup(zone->ixfr);
-    xfrd_cleanup(zone->xfrd, 1);
-    notify_cleanup(zone->notify);
     signconf_cleanup(zone->signconf);
     stats_cleanup(zone->stats);
     free(zone->notify_command);
@@ -886,7 +852,6 @@ zone_cleanup(zone_type* zone)
     free((void*)zone->signconf_filename);
     free((void*)zone->name);
     collection_class_destroy(&zone->rrstore);
-    pthread_mutex_destroy(&zone->xfr_lock);
     pthread_mutex_destroy(&zone->zone_lock);
     free(zone);
 }
@@ -1100,13 +1065,8 @@ zone_recover2(zone_type* zone)
                     "skipping (%s)", zone_str, zone->name,
                     ods_status2str(status));
                 (void)unlink(filename);
-                ixfr_cleanup(zone->ixfr);
-                zone->ixfr = ixfr_create();
             }
         }
-        pthread_mutex_lock(&zone->ixfr->ixfr_lock);
-        ixfr_purge(zone->ixfr, zone->name);
-        pthread_mutex_unlock(&zone->ixfr->ixfr_lock);
 
         /* all ok */
         free((void*)filename);

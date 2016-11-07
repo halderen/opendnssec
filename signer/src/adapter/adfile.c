@@ -300,12 +300,7 @@ adfile_read(void* zone)
     FILE* fd = NULL;
     zone_type* adzone = (zone_type*) zone;
     ods_status status = ODS_STATUS_OK;
-    if (!adzone || !adzone->adinbound || !adzone->adinbound->configstr) {
-        ods_log_error("[%s] unable to read file: no input adapter",
-            adapter_str);
-        return ODS_STATUS_ASSERT_ERR;
-    }
-    fd = ods_fopen(adzone->adinbound->configstr, NULL, "r");
+    fd = ods_fopen("BERRY", NULL, "r");
     if (!fd) {
         return ODS_STATUS_FOPEN_ERR;
     }
@@ -330,19 +325,6 @@ adfile_write(void* zone, const char* filename)
     zone_type* adzone = (zone_type*) zone;
     ods_status status = ODS_STATUS_OK;
 
-    /* [start] sanity parameter checking */
-    if (!adzone || !adzone->adoutbound) {
-        ods_log_error("[%s] unable to write file: no output adapter",
-            adapter_str);
-        return ODS_STATUS_ASSERT_ERR;
-    }
-    if (!filename) {
-        ods_log_error("[%s] unable to write file: no filename given",
-            adapter_str);
-        return ODS_STATUS_ASSERT_ERR;
-    }
-    /* [end] sanity parameter checking */
-
     /* [start] write zone */
     tmpname = ods_build_path(filename, ".tmp", 0, 0);
     if (!tmpname) {
@@ -353,14 +335,6 @@ adfile_write(void* zone, const char* filename)
         status = adapi_printzone(fd, adzone);
         ods_fclose(fd);
         if (status == ODS_STATUS_OK) {
-            if (adzone->adoutbound->error) {
-                ods_log_error("[%s] unable to write zone %s file %s: one or "
-                    "more RR print failed", adapter_str, adzone->name,
-                    filename);
-                /* clear error */
-                adzone->adoutbound->error = 0;
-                status = ODS_STATUS_FWRITE_ERR;
-            }
         }
     } else {
         status = ODS_STATUS_FOPEN_ERR;

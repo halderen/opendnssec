@@ -76,8 +76,10 @@ engine_create(void)
     engine->drudgers = NULL;
     engine->cmdhandler = NULL;
     engine->cmdhandler_done = 0;
+#ifdef berry
     engine->dnshandler = NULL;
     engine->xfrhandler = NULL;
+#endif
     engine->taskq = NULL;
     engine->signq = NULL;
     engine->pid = -1;
@@ -175,68 +177,6 @@ engine_stop_cmdhandler(engine_type* engine)
         ods_log_error("[%s] command handler self pipe trick failed, "
             "unclean shutdown", engine_str);
     }
-}
-
-
-/**
- * Start/stop dnshandler.
- *
- */
-static void
-engine_start_dnshandler(engine_type* engine)
-{
-    if (!engine || !engine->dnshandler) {
-        return;
-    }
-    ods_log_debug("[%s] start dnshandler", engine_str);
-    engine->dnshandler->engine = engine;
-    janitor_thread_create(&engine->dnshandler->thread_id, handlerthreadclass, (janitor_runfn_t)dnshandler_start, engine->dnshandler);
-}
-static void
-engine_stop_dnshandler(engine_type* engine)
-{
-    if (!engine || !engine->dnshandler || !engine->dnshandler->thread_id) {
-        return;
-    }
-    ods_log_debug("[%s] stop dnshandler", engine_str);
-    engine->dnshandler->need_to_exit = 1;
-    dnshandler_signal(engine->dnshandler);
-    ods_log_debug("[%s] join dnshandler", engine_str);
-    janitor_thread_join(engine->dnshandler->thread_id);
-    engine->dnshandler->engine = NULL;
-}
-
-
-static void
-engine_start_xfrhandler(engine_type* engine)
-{
-    if (!engine || !engine->xfrhandler) {
-        return;
-    }
-    ods_log_debug("[%s] start xfrhandler", engine_str);
-    engine->xfrhandler->engine = engine;
-    /* This might be the wrong place to mark the xfrhandler started but
-     * if its isn't done here we might try to shutdown and stop it before
-     * it has marked itself started
-     */
-    engine->xfrhandler->started = 1;
-    janitor_thread_create(&engine->xfrhandler->thread_id, handlerthreadclass, (janitor_runfn_t)xfrhandler_start, engine->xfrhandler);
-}
-static void
-engine_stop_xfrhandler(engine_type* engine)
-{
-    if (!engine || !engine->xfrhandler) {
-        return;
-    }
-    ods_log_debug("[%s] stop xfrhandler", engine_str);
-    engine->xfrhandler->need_to_exit = 1;
-    xfrhandler_signal(engine->xfrhandler);
-    ods_log_debug("[%s] join xfrhandler", engine_str);
-    if (engine->xfrhandler->started) {
-    	janitor_thread_join(engine->xfrhandler->thread_id);
-    	engine->xfrhandler->started = 0;
-    }
-    engine->xfrhandler->engine = NULL;
 }
 
 
@@ -420,31 +360,11 @@ engine_setup(void)
     if (!engine || !engine->config) {
         return ODS_STATUS_ASSERT_ERR;
     }
-    /* set edns */
-    edns_init(&engine->edns, EDNS_MAX_MESSAGE_LEN);
 
     /* create command handler (before chowning socket file) */
     engine->cmdhandler = cmdhandler_create(engine->config->clisock_filename);
     if (!engine->cmdhandler) {
         return ODS_STATUS_CMDHANDLER_ERR;
-    }
-    engine->dnshandler = dnshandler_create(engine->config->interfaces);
-    engine->xfrhandler = xfrhandler_create();
-    if (!engine->xfrhandler) {
-        return ODS_STATUS_XFRHANDLER_ERR;
-    }
-    if (engine->dnshandler) {
-        if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sockets) == -1) {
-            return ODS_STATUS_XFRHANDLER_ERR;
-        }
-        engine->xfrhandler->dnshandler.fd = sockets[0];
-        engine->dnshandler->xfrhandler.fd = sockets[1];
-        status = dnshandler_listen(engine->dnshandler);
-        if (status != ODS_STATUS_OK) {
-            ods_log_error("[%s] setup: unable to listen to sockets (%s)",
-                engine_str, ods_status2str(status));
-            return ODS_STATUS_XFRHANDLER_ERR;
-        }
     }
     /* privdrop */
     engine->uid = privuid(engine->config->username);
@@ -515,9 +435,6 @@ engine_setup(void)
     engine_create_drudgers(engine);
     /* start cmd/dns/xfr handlers */
     engine_start_cmdhandler(engine);
-    engine_start_dnshandler(engine);
-    engine_start_xfrhandler(engine);
-    tsig_handler_init();
     return ODS_STATUS_OK;
 }
 
@@ -599,18 +516,7 @@ set_notify_ns(zone_type* zone, const char* cmd)
     ods_log_assert(cmd);
     ods_log_assert(zone);
     ods_log_assert(zone->name);
-    ods_log_assert(zone->adoutbound);
-    if (zone->adoutbound->type == ADAPTER_FILE) {
-        str = ods_replace(cmd, "%zonefile", zone->adoutbound->configstr);
-        if (!str) {
-            ods_log_error("[%s] unable to set notify ns: replace zonefile failed",
-                engine_str);
-        }
-        str2 = ods_replace(str, "%zone", zone->name);
-        free((void*)str);
-    } else {
         str2 = ods_replace(cmd, "%zone", zone->name);
-    }
     if (str2) {
         ods_str_trim((char*) str2, 1);
         str = str2;
@@ -630,64 +536,6 @@ set_notify_ns(zone_type* zone, const char* cmd)
         ods_log_error("[%s] unable to set notify ns: replace zone failed",
             engine_str);
     }
-}
-
-
-/**
- * Update DNS configuration for zone.
- *
- */
-static int
-dnsconfig_zone(engine_type* engine, zone_type* zone)
-{
-    int numdns = 0;
-    ods_log_assert(engine);
-    ods_log_assert(engine->xfrhandler);
-    ods_log_assert(engine->xfrhandler->netio);
-    ods_log_assert(zone);
-    ods_log_assert(zone->adinbound);
-    ods_log_assert(zone->adoutbound);
-    ods_log_assert(zone->name);
-
-    if (zone->adinbound->type == ADAPTER_DNS) {
-        /* zone transfer handler */
-        if (!zone->xfrd) {
-            ods_log_debug("[%s] add transfer handler for zone %s",
-                engine_str, zone->name);
-            zone->xfrd = xfrd_create((void*) engine->xfrhandler,
-                (void*) zone);
-            ods_log_assert(zone->xfrd);
-            netio_add_handler(engine->xfrhandler->netio,
-                &zone->xfrd->handler);
-        } else if (!zone->xfrd->serial_disk_acquired) {
-            xfrd_set_timer_now(zone->xfrd);
-        }
-        numdns++;
-    } else if (zone->xfrd) {
-        netio_remove_handler(engine->xfrhandler->netio,
-            &zone->xfrd->handler);
-        xfrd_cleanup(zone->xfrd, 0);
-        zone->xfrd = NULL;
-    }
-    if (zone->adoutbound->type == ADAPTER_DNS) {
-        /* notify handler */
-        if (!zone->notify) {
-            ods_log_debug("[%s] add notify handler for zone %s",
-                engine_str, zone->name);
-            zone->notify = notify_create((void*) engine->xfrhandler,
-                (void*) zone);
-            ods_log_assert(zone->notify);
-            netio_add_handler(engine->xfrhandler->netio,
-                &zone->notify->handler);
-        }
-        numdns++;
-    } else if (zone->notify) {
-        netio_remove_handler(engine->xfrhandler->netio,
-            &zone->notify->handler);
-        notify_cleanup(zone->notify);
-        zone->notify = NULL;
-    }
-    return numdns;
 }
 
 
@@ -724,8 +572,6 @@ engine_update_zones(engine_type* engine, ods_status zl_changed)
             zonelist_del_zone(engine->zonelist, zone);
             sched_task_destroy(engine->taskq, zone->task);
             pthread_mutex_unlock(&zone->zone_lock);
-            netio_remove_handler(engine->xfrhandler->netio,
-                &zone->xfrd->handler);
             zone_cleanup(zone);
             zone = NULL;
             continue;
@@ -746,21 +592,6 @@ engine_update_zones(engine_type* engine, ods_status zl_changed)
                 continue;
             }
         }
-        /* load adapter config */
-        status = adapter_load_config(zone->adinbound);
-        if (status != ODS_STATUS_OK) {
-            ods_log_error("[%s] unable to load config for inbound adapter "
-                "for zone %s: %s", engine_str, zone->name,
-                ods_status2str(status));
-        }
-        status = adapter_load_config(zone->adoutbound);
-        if (status != ODS_STATUS_OK) {
-            ods_log_error("[%s] unable to load config for outbound adapter "
-                "for zone %s: %s", engine_str, zone->name,
-                ods_status2str(status));
-        }
-        /* for dns adapters */
-        warnings += dnsconfig_zone(engine, zone);
 
         if (zone->zl_status == ZONE_ZL_ADDED) {
             ods_log_assert(task);
@@ -787,15 +618,6 @@ engine_update_zones(engine_type* engine, ods_status zl_changed)
         node = ldns_rbtree_next(node);
     }
     pthread_mutex_unlock(&engine->zonelist->zl_lock);
-    if (engine->dnshandler) {
-        ods_log_debug("[%s] forward notify for all zones", engine_str);
-        dnshandler_fwd_notify(engine->dnshandler,
-            (uint8_t*) ODS_SE_NOTIFY_CMD, strlen(ODS_SE_NOTIFY_CMD));
-    } else if (warnings) {
-        ods_log_warning("[%s] no dnshandler/listener configured, but zones "
-         "are configured with dns adapters: notify and zone transfer "
-         "requests will not work properly", engine_str);
-    }
     if (wake_up) {
         engine_wakeup_workers(engine);
     }
@@ -964,8 +786,6 @@ engine_start(const char* cfgfile, int cmdline_verbosity, int daemonize,
     /* shutdown */
     ods_log_info("[%s] signer shutdown", engine_str);
     engine_stop_cmdhandler(engine);
-    engine_stop_xfrhandler(engine);
-    engine_stop_dnshandler(engine);
 
 earlyexit:
     if (engine && engine->config) {
@@ -976,7 +796,6 @@ earlyexit:
             (void)unlink(engine->config->clisock_filename);
         }
     }
-    tsig_handler_cleanup();
     engine_cleanup(engine);
     engine = NULL;
 
@@ -1012,8 +831,6 @@ engine_cleanup(engine_type* engine)
     schedule_cleanup(engine->taskq);
     fifoq_cleanup(engine->signq);
     cmdhandler_cleanup(engine->cmdhandler);
-    dnshandler_cleanup(engine->dnshandler);
-    xfrhandler_cleanup(engine->xfrhandler);
     engine_config_cleanup(engine->config);
     pthread_mutex_destroy(&engine->signal_lock);
     pthread_cond_destroy(&engine->signal_cond);

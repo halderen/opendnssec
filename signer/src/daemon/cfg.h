@@ -43,7 +43,6 @@ typedef struct engineconfig_struct engineconfig_type;
  *
  */
 struct engineconfig_struct {
-    listener_type* interfaces;
     hsm_repository_t* repositories;
     const char* cfg_filename;
     const char* zonelist_filename;

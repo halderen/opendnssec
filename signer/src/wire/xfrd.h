@@ -93,7 +93,7 @@ struct soa_struct {
 struct xfrd_struct
 {
     xfrhandler_type* xfrhandler;
-    zone_type* zone;
+    zone2_type* zone;
     pthread_mutex_t serial_lock; /* mutexes soa serial management */
     pthread_mutex_t rw_lock; /* mutexes <zone>.xfrd file */
 

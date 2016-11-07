@@ -39,6 +39,7 @@ enum zone_zl_status_enum {
 typedef enum zone_zl_status_enum zone_zl_status;
 
 typedef struct zone_struct zone_type;
+typedef struct zone2_struct zone2_type;
 
 #include "adapter/adapter.h"
 #include "scheduler/schedule.h"
@@ -70,22 +71,15 @@ struct zone_struct {
     const char* signconf_filename; /* signconf filename */
     zone_zl_status zl_status; /* zonelist status */
     /* adapters */
-    adapter_type* adinbound; /* inbound adapter */
-    adapter_type* adoutbound; /* outbound adapter */
     /* from signconf.xml */
     signconf_type* signconf; /* signer configuration values */
     /* zone data */
     namedb_type* db;
-    ixfr_type* ixfr;
-    /* zone transfers */
-    xfrd_type* xfrd;
-    notify_type* notify;
     /* worker variables */
     task_type* task; /* next assigned task */
     /* statistics */
     stats_type* stats;
     pthread_mutex_t zone_lock;
-    pthread_mutex_t xfr_lock;
     /* backing store for rrsigs (both domain as denial) */
     collection_class rrstore;
 
@@ -94,6 +88,17 @@ struct zone_struct {
     task_id halted;
     time_t when;
     time_t halted_when;
+};
+struct zone2_struct {
+    ldns_rdf* apex; /* wire format zone name */
+    const char* name; /* string format zone name */
+    adapter_type* adinbound; /* inbound adapter */
+    adapter_type* adoutbound; /* outbound adapter */
+    ixfr_type* ixfr;
+    /* zone transfers */
+    xfrd_type* xfrd;
+    notify_type* notify;
+    pthread_mutex_t xfr_lock;
 };
 
 /**

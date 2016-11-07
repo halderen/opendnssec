@@ -273,7 +273,6 @@ query_process_notify(query_type* q, ldns_rr_type qtype, engine_type* engine)
     if (!engine || !q || !q->zone) {
         return QUERY_DISCARDED;
     }
-    ods_log_assert(engine->dnshandler);
     ods_log_assert(q->zone->name);
     ods_log_verbose("[%s] incoming notify for zone %s", query_str,
         q->zone->name);
@@ -380,8 +379,10 @@ query_process_notify(query_type* q, ldns_rr_type qtype, engine_type* engine)
                     q->zone->name);
             }
             xfrd_set_timer_now(q->zone->xfrd);
+#ifdef BERRY
             dnshandler_fwd_notify(engine->dnshandler, buffer_begin(q->buffer),
                 buffer_remaining(q->buffer));
+#endif
         }
     } else { /* Empty answer section, no SOA. We still need to process
         the notify according to the RFC */
@@ -394,8 +395,10 @@ query_process_notify(query_type* q, ldns_rr_type qtype, engine_type* engine)
                 q->zone->name);
         }
         xfrd_set_timer_now(q->zone->xfrd);
+#ifdef BERRY
         dnshandler_fwd_notify(engine->dnshandler, buffer_begin(q->buffer),
             buffer_remaining(q->buffer));
+#endif
     }
 
     /* send notify ok */
@@ -567,18 +570,15 @@ query_response(query_type* q, ldns_rr_type qtype)
         return QUERY_DISCARDED;
     }
     r.rrset_count = 0;
-    pthread_mutex_lock(&q->zone->zone_lock);
     rrset = zone_lookup_rrset(q->zone, q->zone->apex, qtype);
     if (rrset) {
         if (!response_add_rrset(&r, rrset, LDNS_SECTION_ANSWER)) {
-            pthread_mutex_unlock(&q->zone->zone_lock);
             return query_servfail(q);
         }
         /* NS RRset goes into Authority Section */
         rrset = zone_lookup_rrset(q->zone, q->zone->apex, LDNS_RR_TYPE_NS);
         if (rrset) {
             if (!response_add_rrset(&r, rrset, LDNS_SECTION_AUTHORITY)) {
-                pthread_mutex_unlock(&q->zone->zone_lock);
                 return query_servfail(q);
             }
         }
@@ -586,15 +586,12 @@ query_response(query_type* q, ldns_rr_type qtype)
         rrset = zone_lookup_rrset(q->zone, q->zone->apex, LDNS_RR_TYPE_SOA);
         if (rrset) {
             if (!response_add_rrset(&r, rrset, LDNS_SECTION_AUTHORITY)) {
-                pthread_mutex_unlock(&q->zone->zone_lock);
                 return query_servfail(q);
             }
         }
     } else {
-        pthread_mutex_unlock(&q->zone->zone_lock);
         return query_servfail(q);
     }
-    pthread_mutex_unlock(&q->zone->zone_lock);
 
     response_encode(q, &r);
     /* compression */
@@ -874,13 +871,6 @@ query_process(query_type* q, engine_type* engine)
        zone transfers, updates and notifies */
     q->zone = zonelist_lookup_zone_by_dname(engine->zonelist, ldns_rr_owner(rr),
         ldns_rr_get_class(rr));
-    /* don't answer for zones that are just added */
-    if (q->zone && q->zone->zl_status == ZONE_ZL_ADDED) {
-        ods_log_assert(q->zone->name);
-        ods_log_warning("[%s] zone %s just added, don't answer for now",
-            query_str, q->zone->name);
-        q->zone = NULL;
-    }
     pthread_mutex_unlock(&engine->zonelist->zl_lock);
     if (!q->zone) {
         ods_log_debug("[%s] zone not found", query_str);
@@ -959,7 +949,6 @@ query_add_optional(query_type* q, engine_type* engine)
     }
     /** First EDNS */
     if (q->edns_rr) {
-        edns = &engine->edns;
         switch (q->edns_rr->status) {
             case EDNS_NOT_PRESENT:
                 break;

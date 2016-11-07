@@ -1371,7 +1371,11 @@ xfrd_tcp_open(xfrd_type* xfrd, tcp_set_type* set)
     }
     to_len = xfrd_acl_sockaddr_to(xfrd->master, &to);
     /* bind it */
+#ifdef BERRY
     interface_type interface = xfrd->xfrhandler->engine->dnshandler->interfaces->interfaces[0];
+#else
+    interface_type interface;
+#endif
     if (!interface.address) {
         ods_log_error("[%s] unable to get the address of interface", xfrd_str);
         return -1;
@@ -1900,12 +1904,12 @@ xfrd_udp_release(xfrd_type* xfrd)
 static void
 xfrd_make_request(xfrd_type* xfrd)
 {
-    zone_type* zone = NULL;
+    zone2_type* zone = NULL;
     dnsin_type* dnsin = NULL;
     if (!xfrd || !xfrd->xfrhandler) {
         return;
     }
-    zone = (zone_type*) xfrd->zone;
+    zone = (zone2_type*) xfrd->zone;
     ods_log_assert(zone);
     ods_log_assert(zone->name);
     ods_log_assert(zone->adinbound);

@@ -50,8 +50,8 @@
 #include <stdlib.h>
 
 static const char* adapter_str = "adapter";
-static ods_status addns_read_pkt(FILE* fd, zone_type* zone);
-static ods_status addns_read_file(FILE* fd, zone_type* zone);
+static ods_status addns_read_pkt(FILE* fd, zone2_type* zone);
+static ods_status addns_read_file(FILE* fd, zone2_type* zone);
 
 
 /**
@@ -135,7 +135,7 @@ addns_read_line:
  *
  */
 static ods_status
-addns_read_pkt(FILE* fd, zone_type* zone)
+addns_read_pkt(FILE* fd, zone2_type* zone)
 {
     ldns_rr* rr = NULL;
     long startpos = 0;
@@ -289,8 +289,7 @@ begin_pkt:
                 ods_log_verbose("[%s] detected ixfr serial=%u for zone %s",
                     adapter_str, tmp_serial, zone->name);
 
-                if (!util_serial_gt(tmp_serial, old_serial) &&
-                    zone->db->is_initialized) {
+                if (!util_serial_gt(tmp_serial, old_serial)) {
                     ods_log_error("[%s] bad ixfr for zone %s, bad start serial %lu",
                         adapter_str, zone->name, (unsigned long)tmp_serial);
                     result = ODS_STATUS_ERR;
@@ -387,7 +386,9 @@ begin_pkt:
     } else {
         ods_log_warning("[%s] xfr zone %s on disk incomplete, rollback",
             adapter_str, zone->name);
+#ifdef BERRY
         namedb_rollback(zone->db, 1);
+#endif
         if (ods_strcmp(";;BEGINPACKET", line) == 0) {
             result = ODS_STATUS_OK;
             startpos = fpos;
@@ -474,7 +475,7 @@ begin_pkt:
  *
  */
 static ods_status
-addns_read_file(FILE* fd, zone_type* zone)
+addns_read_file(FILE* fd, zone2_type* zone)
 {
     ods_status status = ODS_STATUS_OK;
 
@@ -655,7 +656,7 @@ dnsout_update(dnsout_type** addns, const char* filename, time_t* last_mod)
 static void
 dnsout_send_notify(void* zone)
 {
-    zone_type* z = (zone_type*) zone;
+    zone2_type* z = (zone2_type*) zone;
     rrset_type* rrset = NULL;
     ldns_rr* soa = NULL;
     if (!z->notify) {
@@ -666,10 +667,7 @@ dnsout_send_notify(void* zone)
     ods_log_assert(z->adoutbound);
     ods_log_assert(z->adoutbound->config);
     ods_log_assert(z->adoutbound->type == ADAPTER_DNS);
-    ods_log_assert(z->db);
     ods_log_assert(z->name);
-    ods_log_debug("[%s] enable notify for zone %s serial %u", adapter_str,
-        z->name, z->db->intserial);
     rrset = zone_lookup_rrset(z, z->apex, LDNS_RR_TYPE_SOA);
     ods_log_assert(rrset);
     soa = ldns_rr_clone(rrset->rrs[0].rr);
@@ -684,7 +682,7 @@ dnsout_send_notify(void* zone)
 ods_status
 addns_read(void* zone)
 {
-    zone_type* z = (zone_type*) zone;
+    zone2_type* z = (zone2_type*) zone;
     ods_status status = ODS_STATUS_OK;
     char* xfrfile = NULL;
     char* file = NULL;
@@ -692,7 +690,6 @@ addns_read(void* zone)
     ods_log_assert(z);
     ods_log_assert(z->name);
     ods_log_assert(z->xfrd);
-    ods_log_assert(z->db);
     ods_log_assert(z->adinbound);
     ods_log_assert(z->adinbound->type == ADAPTER_DNS);
 
@@ -772,7 +769,7 @@ addns_write(void* zone)
     char* axfrfile = NULL;
     char* itmpfile = NULL;
     char* ixfrfile = NULL;
-    zone_type* z = (zone_type*) zone;
+    zone2_type* z = (zone2_type*) zone;
     int ret = 0;
     ods_status status = ODS_STATUS_OK;
     ods_log_assert(z);
@@ -796,7 +793,7 @@ addns_write(void* zone)
         return status;
     }
 
-    if (z->db->is_initialized && z->ixfr->part[0] &&
+    if (z->ixfr->part[0] &&
             z->ixfr->part[0]->soamin && z->ixfr->part[0]->soaplus)
     {
         itmpfile = ods_build_path(z->name, ".ixfr.tmp", 0, 1);
@@ -855,7 +852,7 @@ addns_write(void* zone)
     axfrfile = NULL;
     atmpfile = NULL;
 
-    if (z->db->is_initialized  && z->ixfr->part[0] &&
+    if (z->ixfr->part[0] &&
             z->ixfr->part[0]->soamin && z->ixfr->part[0]->soaplus)
     {
         ixfrfile = ods_build_path(z->name, ".ixfr", 0, 1);

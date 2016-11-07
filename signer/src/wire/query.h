@@ -74,7 +74,7 @@ struct query_struct {
     /* QNAME, QTYPE, QCLASS */
 
     /* Zone */
-    zone_type* zone;
+    zone2_type* zone;
     /* Compression */
 
     /* AXFR IXFR */

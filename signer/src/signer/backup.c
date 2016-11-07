@@ -585,9 +585,6 @@ backup_read_ixfr(FILE* in, void* zone)
                     ods_log_debug("[%s] new part SOA: %s", backup_str,
                         str);
                     LDNS_FREE(str);
-                    pthread_mutex_lock(&z->ixfr->ixfr_lock);
-                    ixfr_purge(z->ixfr, z->name);
-                    pthread_mutex_unlock(&z->ixfr->ixfr_lock);
                 }
             } else {
                 str = ldns_rr2str(rr);
@@ -609,15 +606,6 @@ backup_read_ixfr(FILE* in, void* zone)
         ods_log_assert(first_soa);
         if (z->db->is_initialized) {
             str = ldns_rr2str(rr);
-            pthread_mutex_lock(&z->ixfr->ixfr_lock);
-            if (del_mode) {
-                ods_log_deeebug("[%s] -IXFR: %s", backup_str, str);
-                ixfr_del_rr(z->ixfr, rr);
-            } else {
-                ods_log_deeebug("[%s] +IXFR: %s", backup_str, str);
-                ixfr_add_rr(z->ixfr, rr);
-            }
-            pthread_mutex_unlock(&z->ixfr->ixfr_lock);
             LDNS_FREE(str);
         }
         ldns_rr_free(rr);

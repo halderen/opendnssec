@@ -272,21 +272,7 @@ cmdhandler_handle_cmd_retransfer(int sockfd, cmdhandler_type* cmdc, char* tbd)
         (void)snprintf(buf, ODS_SE_MAXLINE, "Error: Zone %s not found.\n",
             tbd);
         ods_writen(sockfd, buf, strlen(buf));
-    } else if (zone->adinbound->type != ADAPTER_DNS) {
-        (void)snprintf(buf, ODS_SE_MAXLINE,
-            "Error: Zone %s not configured to use DNS input adapter.\n",
-            tbd);
-        ods_writen(sockfd, buf, strlen(buf));
-    } else {
-        zone->xfrd->serial_retransfer = 1;
-        xfrd_set_timer_now(zone->xfrd);
-        ods_log_debug("[%s] forward a notify", cmdh_str);
-        dnshandler_fwd_notify(engine->dnshandler,
-            (uint8_t*) ODS_SE_NOTIFY_CMD, strlen(ODS_SE_NOTIFY_CMD));
-        (void)snprintf(buf, ODS_SE_MAXLINE, "Zone %s being retransferred.\n", tbd);
-        ods_writen(sockfd, buf, strlen(buf));
-        ods_log_verbose("[%s] zone %s being retransferred", cmdh_str, tbd);
-    }
+    };
 }
 
 
@@ -452,18 +438,6 @@ cmdhandler_handle_cmd_clear(int sockfd, cmdhandler_type* cmdc, const char* tbd)
         intserial = zone->db->intserial;
         outserial = zone->db->outserial;
         namedb_cleanup(zone->db);
-        ixfr_cleanup(zone->ixfr);
-        signconf_cleanup(zone->signconf);
-
-        zone->db = namedb_create((void*)zone);
-        zone->ixfr = ixfr_create();
-        zone->signconf = signconf_create();
-
-        if (!zone->signconf || !zone->ixfr || !zone->db) {
-            ods_fatal_exit("[%s] unable to clear zone %s: failed to recreate"
-            "signconf, ixfr of db structure (out of memory?)", cmdh_str, tbd);
-            return;
-        }
         /* restore serial management */
         zone->db->inbserial = inbserial;
         zone->db->intserial = intserial;

@@ -97,7 +97,7 @@ notify_set_timer(notify_type* notify, time_t t)
  *
  */
 notify_type*
-notify_create(xfrhandler_type* xfrhandler, zone_type* zone)
+notify_create(xfrhandler_type* xfrhandler, zone2_type* zone)
 {
     notify_type* notify = NULL;
     if (!xfrhandler || !zone) {
@@ -141,12 +141,12 @@ notify_create(xfrhandler_type* xfrhandler, zone_type* zone)
 static void
 notify_setup(notify_type* notify)
 {
-    zone_type* zone = NULL;
+    zone2_type* zone = NULL;
     dnsout_type* dnsout = NULL;
     if (!notify) {
         return;
     }
-    zone = (zone_type*) notify->zone;
+    zone = (zone2_type*) notify->zone;
     ods_log_assert(zone);
     ods_log_assert(zone->adoutbound);
     ods_log_assert(zone->adoutbound->config);
@@ -329,7 +329,11 @@ notify_send_udp(notify_type* notify, buffer_type* buffer)
         return -1;
     }
     /* bind it */
+#ifdef BERRY
     interface_type interface = notify->xfrhandler->engine->dnshandler->interfaces->interfaces[0];
+#else
+    interface_type interface;
+#endif
     if (!interface.address) {
         ods_log_error("[%s] unable to get the address of interface", notify_str);
         return -1;
@@ -541,14 +545,14 @@ void
 notify_enable(notify_type* notify, ldns_rr* soa)
 {
     xfrhandler_type* xfrhandler = NULL;
-    zone_type* zone = NULL;
+    zone2_type* zone = NULL;
     dnsout_type* dnsout = NULL;
     if (!notify) {
         return;
     }
     xfrhandler = (xfrhandler_type*) notify->xfrhandler;
     ods_log_assert(xfrhandler);
-    zone = (zone_type*) notify->zone;
+    zone = (zone2_type*) notify->zone;
     ods_log_assert(zone);
     ods_log_assert(zone->name);
     ods_log_assert(zone->adoutbound);

@@ -90,7 +90,6 @@ engine_config(const char* cfgfile, int cmdline_verbosity)
         else {
         	ecfg->verbosity = parse_conf_verbosity(cfgfile);
         }
-        ecfg->interfaces = parse_conf_listener(cfgfile);
         ecfg->repositories = parse_conf_repositories(cfgfile);
         /* done */
         ods_fclose(cfgfd);
@@ -125,11 +124,6 @@ engine_config_check(engineconfig_type* config)
     }
     if (!config->clisock_filename) {
         ods_log_error("[%s] config-check failed: no socket filename",
-            conf_str);
-        return ODS_STATUS_CFG_ERR;
-    }
-    if (!config->interfaces) {
-        ods_log_error("[%s] config-check failed: no listener",
             conf_str);
         return ODS_STATUS_CFG_ERR;
     }
@@ -193,26 +187,6 @@ engine_config_print(FILE* out, engineconfig_type* config)
             }
             fprintf(out, "\t\t</Privileges>\n");
         }
-        if (config->interfaces) {
-             size_t i = 0;
-             fprintf(out, "\t\t<Listener>\n");
-
-             for (i=0; i < config->interfaces->count; i++) {
-                 fprintf(out, "\t\t\t<Interface>");
-                 if (config->interfaces->interfaces[i].address) {
-                     fprintf(out, "<Address>%s</Address>",
-                         config->interfaces->interfaces[i].address);
-                 }
-                 if (config->interfaces->interfaces[i].port) {
-                     fprintf(out, "<Port>%s</Port>",
-                         config->interfaces->interfaces[i].port);
-                 }
-                 fprintf(out, "<Interface>\n");
-             }
-             fprintf(out, "\t\t</Listener>\n");
-
-        }
-
         fprintf(out, "\t\t<WorkingDirectory>%s</WorkingDirectory>\n",
             config->working_dir);
         fprintf(out, "\t\t<WorkerThreads>%i</WorkerThreads>\n",
@@ -245,7 +219,6 @@ engine_config_cleanup(engineconfig_type* config)
     if (!config) {
         return;
     }
-    listener_cleanup(config->interfaces);
     hsm_repository_free(config->repositories);
     free((void*)config->notify_command);
     free((void*)config->cfg_filename);

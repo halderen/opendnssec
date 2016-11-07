@@ -98,7 +98,6 @@ tools_input(zone_type* zone)
 
     ods_log_assert(zone);
     ods_log_assert(zone->name);
-    ods_log_assert(zone->adinbound);
     ods_log_assert(zone->signconf);
     /* Key Rollover? */
     status = zone_publish_dnskeys(zone, 0);
@@ -187,7 +186,6 @@ tools_output(zone_type* zone, engine_type* engine)
     ods_log_assert(zone->db);
     ods_log_assert(zone->name);
     ods_log_assert(zone->signconf);
-    ods_log_assert(zone->adoutbound);
     /* prepare */
     if (zone->stats) {
         pthread_mutex_lock(&zone->stats->stats_lock);
@@ -214,9 +212,6 @@ tools_output(zone_type* zone, engine_type* engine)
     zone->db->outserial = zone->db->intserial;
     zone->db->is_initialized = 1;
     zone->db->have_serial = 1;
-    pthread_mutex_lock(&zone->ixfr->ixfr_lock);
-    ixfr_purge(zone->ixfr, zone->name);
-    pthread_mutex_unlock(&zone->ixfr->ixfr_lock);
     /* kick the nameserver */
     if (zone->notify_ns) {
 	int pid_status;
@@ -270,11 +265,6 @@ tools_output(zone_type* zone, engine_type* engine)
             zone->signconf->nsec_type);
         stats_clear(zone->stats);
         pthread_mutex_unlock(&zone->stats->stats_lock);
-    }
-    if (engine->dnshandler) {
-        ods_log_debug("[%s] forward a notify", tools_str);
-        dnshandler_fwd_notify(engine->dnshandler, (uint8_t*) ODS_SE_NOTIFY_CMD,
-            strlen(ODS_SE_NOTIFY_CMD));
     }
     return status;
 }

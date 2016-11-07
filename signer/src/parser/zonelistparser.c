@@ -160,8 +160,6 @@ parse_zonelist_adapters(xmlXPathContextPtr xpathCtx, zone_type* zone)
     if (!xpathCtx || !zone) {
         return;
     }
-    zone->adinbound  = parse_zonelist_adapter(xpathCtx, i_expr, 1);
-    zone->adoutbound = parse_zonelist_adapter(xpathCtx, o_expr, 0);
 }
 
 
@@ -236,8 +234,7 @@ parse_zonelist_zones(void* zlist, const char* zlfile)
                 new_zone->signconf_filename = parse_zonelist_element(xpathCtx,
                     signconf_expr);
                 parse_zonelist_adapters(xpathCtx, new_zone);
-                if (!new_zone->policy_name || !new_zone->signconf_filename ||
-                    !new_zone->adinbound || !new_zone->adoutbound) {
+                if (!new_zone->policy_name || !new_zone->signconf_filename) {
                     zone_cleanup(new_zone);
                     new_zone = NULL;
                     ods_log_crit("[%s] unable to create zone %s", parser_str,

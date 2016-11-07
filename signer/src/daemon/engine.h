@@ -61,9 +61,6 @@ struct engine_struct {
     schedule_type* taskq;
     fifoq_type* signq;
     cmdhandler_type* cmdhandler;
-    dnshandler_type* dnshandler;
-    xfrhandler_type* xfrhandler;
-    edns_data_type edns;
     int cmdhandler_done;
 
     pid_t pid;

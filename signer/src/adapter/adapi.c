@@ -42,19 +42,6 @@
 static const char* adapi_str = "adapter";
 
 
-/**
- * Get the inbound serial.
- *
- */
-uint32_t
-adapi_get_serial(zone_type* zone)
-{
-    if (!zone || !zone->db) {
-        return 0;
-    }
-    return zone->db->inbserial;
-}
-
 
 /**
  * Set the inbound serial.
@@ -114,43 +101,6 @@ adapi_trans_full(zone_type* zone, unsigned more_coming)
     namedb_diff(zone->db, 0, more_coming);
 
     if (zone->stats) {
-        pthread_mutex_lock(&zone->stats->stats_lock);
-        zone->stats->nsec_time = 0;
-        zone->stats->nsec_count = 0;
-        pthread_mutex_unlock(&zone->stats->stats_lock);
-    }
-    start = time(NULL);
-    /* nsecify(3) */
-    namedb_nsecify(zone->db, &num_added);
-    end = time(NULL);
-    if (zone->stats) {
-        pthread_mutex_lock(&zone->stats->stats_lock);
-        if (!zone->stats->start_time) {
-            zone->stats->start_time = start;
-        }
-        zone->stats->nsec_time = (end-start);
-        zone->stats->nsec_count = num_added;
-        pthread_mutex_unlock(&zone->stats->stats_lock);
-    }
-}
-
-
-/*
- * Do incremental zone transaction.
- *
- */
-void
-adapi_trans_diff(zone_type* zone, unsigned more_coming)
-{
-    time_t start = 0;
-    time_t end = 0;
-    uint32_t num_added = 0;
-    if (!zone || !zone->db) {
-        return;
-    }
-    namedb_diff(zone->db, 1, more_coming);
-
-   if (zone->stats) {
         pthread_mutex_lock(&zone->stats->stats_lock);
         zone->stats->nsec_time = 0;
         zone->stats->nsec_count = 0;
@@ -364,17 +314,6 @@ adapi_add_rr(zone_type* zone, ldns_rr* rr, int backup)
 
 
 /**
- * Delete RR.
- *
- */
-ods_status
-adapi_del_rr(zone_type* zone, ldns_rr* rr, int backup)
-{
-    return adapi_process_rr(zone, rr, 0, backup);
-}
-
-
-/**
  * Print zone.
  *
  */
@@ -388,63 +327,5 @@ adapi_printzone(FILE* fd, zone_type* zone)
         return ODS_STATUS_ASSERT_ERR;
     }
     namedb_export(fd, zone->db, &status);
-    return status;
-}
-
-
-/**
- * Print axfr.
- *
- */
-ods_status
-adapi_printaxfr(FILE* fd, zone_type* zone)
-{
-    rrset_type* rrset = NULL;
-    ods_status status = ODS_STATUS_OK;
-    if (!fd || !zone || !zone->db) {
-        ods_log_error("[%s] unable to print axfr: file descriptor, zone or "
-            "name database missing", adapi_str);
-        return ODS_STATUS_ASSERT_ERR;
-    }
-    namedb_export(fd, zone->db, &status);
-    if (status == ODS_STATUS_OK) {
-        rrset = zone_lookup_rrset(zone, zone->apex, LDNS_RR_TYPE_SOA);
-        ods_log_assert(rrset);
-        rrset_print(fd, rrset, 1, &status);
-    }
-    return status;
-}
-
-
-/**
- * Print ixfr.
- *
- */
-ods_status
-adapi_printixfr(FILE* fd, zone_type* zone)
-{
-    rrset_type* rrset = NULL;
-    ods_status status = ODS_STATUS_OK;
-    if (!fd || !zone || !zone->db || !zone->ixfr) {
-        ods_log_error("[%s] unable to print ixfr: file descriptor, zone or "
-            "name database missing", adapi_str);
-        return ODS_STATUS_ASSERT_ERR;
-    }
-    if (!zone->db->is_initialized) {
-        /* no ixfr yet */
-        return ODS_STATUS_OK;
-    }
-    rrset = zone_lookup_rrset(zone, zone->apex, LDNS_RR_TYPE_SOA);
-    ods_log_assert(rrset);
-    rrset_print(fd, rrset, 1, &status);
-    if (status != ODS_STATUS_OK) {
-        return status;
-    }
-    pthread_mutex_lock(&zone->ixfr->ixfr_lock);
-    if (ixfr_print(fd, zone->ixfr)) {
-        zone->adoutbound->error = 1;
-    }
-    pthread_mutex_unlock(&zone->ixfr->ixfr_lock);
-    rrset_print(fd, rrset, 1, &status);
     return status;
 }

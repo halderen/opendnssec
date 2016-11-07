@@ -58,7 +58,7 @@ struct notify_struct {
     ldns_rr* soa;
     tsig_rr_type* tsig_rr;
     acl_type* secondary;
-    zone_type* zone;
+    zone2_type* zone;
     xfrhandler_type* xfrhandler;
     netio_handler_type handler;
     struct timespec timeout;
@@ -74,7 +74,7 @@ struct notify_struct {
  * \return notify_type* notify structure.
  *
  */
-notify_type* notify_create(xfrhandler_type* xfrhandler, zone_type* zone);
+notify_type* notify_create(xfrhandler_type* xfrhandler, zone2_type* zone);
 
 /**
  * Enable notify.
