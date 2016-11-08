@@ -32,26 +32,6 @@
 #include "config.h"
 
 #include <pthread.h>
-
-#include "daemon/cfg.h"
-#include "daemon/cmdhandler.h"
-#include "clientpipe.h"
-#include "locks.h"
-#include "daemon/engine.h"
-#include "scheduler/schedule.h"
-#include "scheduler/task.h"
-#include "file.h"
-#include "log.h"
-#include "privdrop.h"
-#include "status.h"
-#include "util.h"
-#include "db/db_configuration.h"
-#include "db/db_connection.h"
-#include "db/database_version.h"
-#include "hsmkey/hsm_key_factory.h"
-#include "libhsm.h"
-#include "locks.h"
-
 #include <errno.h>
 #include <libxml/parser.h>
 #include <signal.h>
@@ -65,6 +45,28 @@
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
+
+#include "daemon/cfg.h"
+#include "daemon/cmdhandler.h"
+#include "clientpipe.h"
+#include "locks.h"
+#include "daemon/engine.h"
+#include "scheduler/schedule.h"
+#include "scheduler/task.h"
+#include "file.h"
+#include "str.h"
+#include "locks.h"
+#include "log.h"
+#include "privdrop.h"
+#include "status.h"
+#include "util.h"
+#include "db/db_configuration.h"
+#include "db/db_connection.h"
+#include "db/database_version.h"
+#include "hsmkey/hsm_key_factory.h"
+#include "libhsm.h"
+#include "locks.h"
+
 
 static const char* engine_str = "engine";
 
@@ -90,19 +92,6 @@ engine_alloc(void)
         return NULL;
     }
     return engine;
-}
-
-void
-engine_dealloc(engine_type* engine)
-{
-    schedule_cleanup(engine->taskq);
-    pthread_mutex_destroy(&engine->signal_lock);
-    pthread_cond_destroy(&engine->signal_cond);
-    if (engine->dbcfg_list) {
-        db_configuration_list_free(engine->dbcfg_list);
-    }
-    hsm_key_factory_deinit();
-    free(engine);
 }
 
 static void
@@ -646,3 +635,17 @@ engine_run(engine_type* engine, start_cb_t start, int single_run)
     hsm_close();
     return 0;
 }
+
+void
+engine_cleanup(engine_type* engine)
+{
+    schedule_cleanup(engine->taskq);
+    pthread_mutex_destroy(&engine->signal_lock);
+    pthread_cond_destroy(&engine->signal_cond);
+    if (engine->dbcfg_list) {
+        db_configuration_list_free(engine->dbcfg_list);
+    }
+    hsm_key_factory_deinit();
+    free(engine);
+}
+

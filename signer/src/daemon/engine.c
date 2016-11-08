@@ -30,6 +30,22 @@
  */
 
 #include "config.h"
+
+#include <pthread.h>
+#include <errno.h>
+#include <libxml/parser.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <time.h>
+#include <unistd.h>
+#include <fcntl.h>
+
 #include "daemon/cfg.h"
 #include "daemon/engine.h"
 #include "duration.h"
@@ -46,18 +62,6 @@
 #include "libhsm.h"
 #include "signertasks.h"
 
-#include <errno.h>
-#include <libxml/parser.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <strings.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <time.h>
-#include <unistd.h>
 
 static const char* engine_str = "engine";
 
@@ -244,9 +248,11 @@ engine_privdrop(engine_type* engine)
     ods_status status = ODS_STATUS_OK;
     uid_t uid = -1;
     gid_t gid = -1;
+
     ods_log_assert(engine);
     ods_log_assert(engine->config);
     ods_log_debug("[%s] drop privileges", engine_str);
+
     if (engine->config->username && engine->config->group) {
         ods_log_verbose("[%s] drop privileges to user %s, group %s",
            engine_str, engine->config->username, engine->config->group);
@@ -268,7 +274,6 @@ engine_privdrop(engine_type* engine)
     privclose(engine->config->username, engine->config->group);
     return status;
 }
-
 
 /**
  * Start/stop workers.
@@ -340,7 +345,6 @@ engine_stop_threads(engine_type* engine)
     }
 }
 
-
 /**
  * Wake up all workers.
  *
@@ -348,11 +352,8 @@ engine_stop_threads(engine_type* engine)
 void
 engine_wakeup_workers(engine_type* engine)
 {
-    size_t i = 0;
     ods_log_assert(engine);
-    ods_log_assert(engine->config);
     ods_log_debug("[%s] wake up workers", engine_str);
-    /* wake up sleepyheads */
     schedule_release_all(engine->taskq);
 }
 

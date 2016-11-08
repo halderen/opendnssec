@@ -33,28 +33,26 @@
 #define DAEMON_ENGINE_H
 
 #include "config.h"
+#include <signal.h>
+
+typedef struct engine_struct engine_type;
+
 #include "daemon/cfg.h"
 #include "daemon/cmdhandler.h"
 #include "scheduler/task.h"
 #include "db/db_configuration.h"
 #include "db/db_connection.h"
 
-#include <signal.h>
-
 /**
  * Engine stuff.
  *
  */
-
-typedef struct engine_struct engine_type;
-
 struct engine_struct {
     engineconfig_type* config;
     worker_type** workers;
     schedule_type* taskq;
     cmdhandler_type* cmdhandler;
     int cmdhandler_done;
-    int init_setup_done;
 
     pid_t pid;
     uid_t uid;
@@ -68,6 +66,7 @@ struct engine_struct {
     pthread_cond_t signal_cond;
     pthread_mutex_t signal_lock;
 
+    int init_setup_done;
     db_configuration_list_t* dbcfg_list;
 };
 
@@ -132,6 +131,6 @@ void engine_stop_workers(engine_type* engine);
 void engine_start_workers(engine_type* engine);
 
 engine_type* engine_alloc(void);
-void engine_dealloc(engine_type* engine);
+void engine_cleanup(engine_type* engine);
 
 #endif /* DAEMON_ENGINE_H */

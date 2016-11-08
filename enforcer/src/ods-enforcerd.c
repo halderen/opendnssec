@@ -268,7 +268,7 @@ main(int argc, char* argv[])
     ods_log_info("[engine] enforcer shutdown"); /* needed for test */
     ods_log_info("[%s] enforcerd (pid: %lu) stopped with exitcode %d",
         enforcerd_str, (unsigned long) engine->pid, returncode);
-    engine_dealloc(engine); /* antagonist of engine_alloc() */
+    engine_cleanup(engine); /* antagonist of engine_alloc() */
     if (returncode && daemonize) {
         fprintf(stderr, "enforcerd stopped with exitcode %d\n",
             returncode);

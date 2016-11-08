@@ -55,12 +55,8 @@ typedef struct engine_struct engine_type;
 struct engine_struct {
     engineconfig_type* config;
     worker_type** workers;
-    zonelist_type* zonelist;
     schedule_type* taskq;
     cmdhandler_type* cmdhandler;
-    dnshandler_type* dnshandler;
-    xfrhandler_type* xfrhandler;
-    edns_data_type edns;
     int cmdhandler_done;
 
     pid_t pid;
@@ -71,8 +67,14 @@ struct engine_struct {
     int need_to_exit;
     int need_to_reload;
 
+    /* Main thread blocks on this condition when there is nothing to do */
     pthread_cond_t signal_cond;
     pthread_mutex_t signal_lock;
+
+    zonelist_type* zonelist;
+    dnshandler_type* dnshandler;
+    xfrhandler_type* xfrhandler;
+    edns_data_type edns;
 };
 
 /**
@@ -88,19 +90,6 @@ struct engine_struct {
 int engine_start(const char* cfgfile, int cmdline_verbosity,
     int daemonize, int info, int single_run);
 
-/**
- * Start drudgers.
- * \param[in] engine engine
- *
- */
-void engine_start_drudgers(engine_type* engine);
-
-/**
- * Stop drudgers.
- * \param[in] engine engine
- *
- */
-void engine_stop_drudgers(engine_type* engine);
 
 /**
  * Wake up workers.
