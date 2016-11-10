@@ -160,6 +160,7 @@ task_delfunc2(ldns_rbnode_t* node)
     if (node && node != LDNS_RBTREE_NULL) {
         task_delfunc2(node->left);
         task_delfunc2(node->right);
+        free((void*)node);
     }
 }
 
@@ -308,7 +309,7 @@ schedule_purge_owner(schedule_type* schedule, char const *class,
          * tree. That is not save and might mess up our iteration. */
         node = ldns_rbtree_first(schedule->tasks_by_name);
         while (node != LDNS_RBTREE_NULL) {
-            task = node->key;
+            task = (task_type *) node->key;
             node = ldns_rbtree_next(node);
             if (!strcmp(task->owner, owner) && !strcmp(task->class, class)) {
                 tasks[num_tasks++] = task;
@@ -425,7 +426,7 @@ schedule_task(schedule_type* schedule, task_type* task, int replace, int log)
  * \param[in] schedule schedule
  * \return task_type* first scheduled task, NULL on no task or error.
  */
-task_type*
+static task_type*
 unschedule_task(schedule_type* schedule, task_type* task)
 {
     ldns_rbnode_t* del_node = LDNS_RBTREE_NULL;
@@ -455,6 +456,16 @@ unschedule_task(schedule_type* schedule, task_type* task)
         schedule->flushcount--;
     }
     return del_task;
+}
+
+task_type*
+schedule_unschedule(schedule_type* schedule, task_type* task)
+{
+    task_type* originalTask;
+    pthread_mutex_lock(&schedule->schedule_lock);
+    originalTask = unschedule_task(schedule, task);
+    pthread_mutex_unlock(&schedule->schedule_lock);
+    return originalTask;
 }
 
 task_type*
