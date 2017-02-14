@@ -26,8 +26,10 @@
  */
 
 #include "config.h"
+#include <getopt.h>
 
-#include "daemon/cmdhandler.h"
+#include "cmdhandler.h"
+#include "daemon/enforcercommands.h"
 #include "daemon/engine.h"
 #include "file.h"
 #include "log.h"
@@ -91,7 +93,7 @@ perform_hsmkey_import(int sockfd, db_connection_t *dbconn,
 	hsm_destroy_context(hsm_ctx);
 	return -1;
     }
-    free(libhsmkey);
+    libhsm_key_free(libhsmkey);
     hsm_key = hsm_key_new_get_by_locator(dbconn, ckaid);
     if (hsm_key) {
         ods_log_error("[%s] Error: Already used this key with this locator: %s", module_str, ckaid);
@@ -164,7 +166,7 @@ perform_keydata_import(int sockfd, db_connection_t *dbconn,
         hsm_destroy_context(hsm_ctx);
         return -1;
     }
-    free(libhsmkey);
+    libhsm_key_free(libhsmkey);
     if (!(hsmkey = hsm_key_new_get_by_locator(dbconn, ckaid))) {
         ods_log_error("[%s] Error: Cannot get hsmkey %s from database, database error", module_str, ckaid);
         hsm_destroy_context(hsm_ctx);
@@ -245,7 +247,7 @@ perform_keystate_import(int sockfd, db_connection_t *dbconn,
         hsm_destroy_context(hsm_ctx);
         return -1;
     }
-    free(libhsmkey);
+    libhsm_key_free(libhsmkey);
     key = key_data_new_get_by_hsm_key_id(dbconn, hsmkeyid);
     keydataid = key_data_id(key);
 
@@ -376,19 +378,12 @@ help(int sockfd)
 }
 
 static int
-handles(const char *cmd, ssize_t n)
+run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 {
-    return ods_check_command(cmd, n, key_import_funcblock()->cmdname)?1:0;
-}
-
-static int
-run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
-	db_connection_t *dbconn)
-{
-    #define NARGV 16
+    #define NARGV 18
     char buf[ODS_SE_MAXLINE];
     const char *argv[NARGV];
-    int argc;
+    int argc = 0, long_index = 0, opt = 0;
     const char *ckaid = NULL;
     const char *repository = NULL;
     const char *zonename = NULL;
@@ -400,13 +395,24 @@ run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
     zone_db_t *zone = NULL;
     time_t inception = 0;
     struct tm tm;
-    (void)engine;
     int setmin;
     db_value_t *hsmkey_id;
     policy_key_t *policy_key;
+    db_connection_t* dbconn = getconnectioncontext(context);
+
+    static struct option long_options[] = {
+        {"zone", required_argument, 0, 'z'},
+        {"cka_id", required_argument, 0, 'k'},
+        {"repository", required_argument, 0, 'r'},
+        {"bits", required_argument, 0, 'b'},
+        {"algorithm", required_argument, 0, 'g'},
+        {"keytype", required_argument, 0, 't'},
+        {"keystate", required_argument, 0, 'e'},
+        {"inception_time", required_argument, 0, 'w'},
+        {0, 0, 0, 0}
+    };
 	
-    ods_log_debug("[%s] %s command", module_str, key_import_funcblock()->cmdname);
-    cmd = ods_check_command(cmd, n, key_import_funcblock()->cmdname);
+    ods_log_debug("[%s] %s command", module_str, key_import_funcblock.cmdname);
 	
     /* Use buf as an intermediate buffer for the command.*/
     strncpy(buf, cmd, sizeof(buf));
@@ -414,20 +420,47 @@ run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
 	
     /* separate the arguments*/
     argc = ods_str_explode(buf, NARGV, argv);
-    if (argc > NARGV) {
-        ods_log_error("[%s] too many arguments for %s command", module_str, key_import_funcblock()->cmdname);
-        client_printf_err(sockfd,"too many arguments\n");
+    if (argc == -1) {
+        client_printf_err(sockfd, "too many arguments\n");
+        ods_log_error("[%s] too many arguments for %s command",
+                      module_str, key_import_funcblock.cmdname);
         return -1;
     }
-	
-    (void)ods_find_arg_and_param(&argc,argv, "cka_id","k",&ckaid);
-    (void)ods_find_arg_and_param(&argc,argv, "repository","r",&repository);
-    (void)ods_find_arg_and_param(&argc,argv, "bits","b",&bits);
-    (void)ods_find_arg_and_param(&argc,argv, "algorithm","g",&algorithm);
-    (void)ods_find_arg_and_param(&argc,argv,"zone","z",&zonename);
-    (void)ods_find_arg_and_param(&argc, argv, "keytype", "t", &keytype);
-    (void)ods_find_arg_and_param(&argc, argv, "keystate", "e", &keystate);
-    (void)ods_find_arg_and_param(&argc,argv, "inception_time","w",&time);
+
+    optind = 0;
+    while ((opt = getopt_long(argc, (char* const*)argv, "z:k:r:b:g:t:e:w:", long_options, &long_index)) != -1) {
+        switch (opt) {
+            case 'z':
+                zonename = optarg;
+                break;
+            case 'k':
+                ckaid = optarg;
+                break;
+            case 'r':
+                repository = optarg;
+                break;
+            case 'b':
+                bits = optarg;
+                break;
+            case 'g':
+                algorithm = optarg;
+                break;
+            case 't':
+                keytype = optarg;
+                break;
+            case 'e':
+                keystate = optarg;
+                break;
+            case 'w':
+                time = optarg;
+                break;
+            default:
+                client_printf_err(sockfd, "unknown arguments\n");
+                ods_log_error("[%s] unknown arguments for %s command",
+                                module_str, key_import_funcblock.cmdname);
+                return -1;
+        }
+    }
 
     if (keytype) {
         if (strcasecmp(keytype, "KSK") && strcasecmp(keytype, "ZSK") && strcasecmp(keytype, "CSK")) {
@@ -446,13 +479,13 @@ run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
     }
 
     if (argc) {
-        ods_log_error("[%s] unknown arguments for %s command", module_str, key_import_funcblock()->cmdname);
+        ods_log_error("[%s] unknown arguments for %s command", module_str, key_import_funcblock.cmdname);
         client_printf_err(sockfd,"unknown arguments\n");
         return -1;
     }
 
     if (!zonename) {
-        ods_log_error("[%s] expected --zone for %s command", module_str, key_import_funcblock()->cmdname);
+        ods_log_error("[%s] expected --zone for %s command", module_str, key_import_funcblock.cmdname);
         client_printf_err(sockfd, "expected --zone \n");
         return -1;
     }
@@ -526,13 +559,6 @@ run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
     return 0;
 }
 
-static struct cmd_func_block funcblock = {
-    "key import", &usage, &help, &handles, &run
+struct cmd_func_block key_import_funcblock = {
+    "key import", &usage, &help, NULL, &run
 };
-
-struct cmd_func_block*
-key_import_funcblock(void)
-{
-    return &funcblock;
-}
-

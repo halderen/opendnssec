@@ -47,8 +47,9 @@
 #include <fcntl.h>
 
 #include "daemon/cfg.h"
-#include "daemon/cmdhandler.h"
+#include "daemon/enforcercommands.h"
 #include "clientpipe.h"
+#include "cmdhandler.h"
 #include "locks.h"
 #include "daemon/engine.h"
 #include "scheduler/schedule.h"
@@ -99,7 +100,6 @@ engine_start_cmdhandler(engine_type* engine)
 {
     ods_log_assert(engine);
     ods_log_debug("[%s] start command handler", engine_str);
-    engine->cmdhandler->engine = engine;
     janitor_thread_create(&engine->cmdhandler->thread_id, workerthreadclass, (janitor_runfn_t)cmdhandler_start, engine->cmdhandler);
 }
 
@@ -169,7 +169,7 @@ engine_start_workers(engine_type* engine)
     ods_log_debug("[%s] start workers", engine_str);
     for (i=0; i < (size_t) engine->config->num_worker_threads; i++) {
         engine->workers[i]->need_to_exit = 0;
-        engine->workers[i]->context = get_database_connection(engine->dbcfg_list);
+        engine->workers[i]->context = get_database_connection(engine);
         if (!engine->workers[i]->context) {
             ods_log_crit("Failed to start worker, could not connect to database");
         } else {
@@ -212,12 +212,12 @@ engine_wakeup_workers(engine_type* engine)
 }
 
 db_connection_t*
-get_database_connection(db_configuration_list_t* dbcfg_list)
+get_database_connection(engine_type* engine)
 {
     db_connection_t* dbconn;
 
     if (!(dbconn = db_connection_new())
-        || db_connection_set_configuration_list(dbconn, dbcfg_list)
+        || db_connection_set_configuration_list(dbconn, engine->dbcfg_list)
         || db_connection_setup(dbconn)
         || db_connection_connect(dbconn))
     {
@@ -234,12 +234,12 @@ get_database_connection(db_configuration_list_t* dbcfg_list)
  * \return 0 on success, 1 on failure.
  */
 static int
-probe_database(db_configuration_list_t* dbcfg_list)
+probe_database(engine_type* engine)
 {
     db_connection_t *conn;
     int version;
 
-    conn = get_database_connection(dbcfg_list);
+    conn = get_database_connection(engine);
     if (!conn) return 1;
     version = database_version_get_version(conn);
     db_connection_free(conn);
@@ -419,9 +419,11 @@ signal_handler(sig_atomic_t sig)
  *
  */
 ods_status
-engine_setup(void)
+engine_setup()
 {
-    int fd;
+    int fd, error;
+    int pipefd[2];
+    char buff = '\0';
 
     ods_log_debug("[%s] enforcer setup", engine_str);
 
@@ -434,18 +436,23 @@ engine_setup(void)
     /* setup database configuration */
     if (setup_database(engine)) return ODS_STATUS_DB_ERR;
     /* Probe the database, can we connect to it? */
-    if (probe_database(engine->dbcfg_list)) {
+    if (probe_database(engine)) {
         ods_log_crit("Could not connect to database or database not set"
             " up properly.");
         return ODS_STATUS_DB_ERR;
     }
 
     /* create command handler (before chowning socket file) */
-    engine->cmdhandler = cmdhandler_create(engine->config->clisock_filename);
+    engine->cmdhandler = cmdhandler_create(engine->config->clisock_filename, enforcercommands, engine, (void*(*)(void*)) (void(*)(void*))&get_database_connection, (void(*)(void*))&db_connection_free);
     if (!engine->cmdhandler) {
         ods_log_error("[%s] create command handler to %s failed",
             engine_str, engine->config->clisock_filename);
         return ODS_STATUS_CMDHANDLER_ERR;
+    }
+
+    if(pipe(pipefd)) {
+        ods_log_error("[%s] unable to pipe: %s", engine_str, strerror(errno));
+        return ODS_STATUS_PIPE_ERR;
     }
 
     if (!engine->init_setup_done) {
@@ -485,14 +492,31 @@ engine_setup(void)
                         (void)dup2(fd, STDERR_FILENO);
                         if (fd > 2) (void)close(fd);
                     }
-                    engine->daemonize = 0; /* don't fork again on reload */
+                    close(pipefd[0]);
                     break;
                 default: /* parent */
+                    close(pipefd[1]);
+                    /* Print messages the child may have send us. */
+                    while (read(pipefd[0], &buff, 1) != -1) {
+                        if (buff <= 1) break;
+                        printf("%c", buff);
+                    }
+                    close(pipefd[0]);
+                    if (buff != '\1') {
+                        ods_log_error("[%s] fail to start enforcerd completely", engine_str);
+                        exit(1);
+                    }
+                    ods_log_debug("[%s] enforcerd started successfully", engine_str);
                     exit(0);
             }
             if (setsid() == -1) {
                 ods_log_error("[%s] unable to setsid daemon (%s)",
                     engine_str, strerror(errno));
+                const char *err = "unable to setsid daemon: ";
+                ods_writen(pipefd[1], err, strlen(err));
+                ods_writeln(pipefd[1], strerror(errno));
+                write(pipefd[1], "\0", 1);
+                close(pipefd[1]);
                 return ODS_STATUS_SETSID_ERR;
             }
         }
@@ -506,16 +530,40 @@ engine_setup(void)
     /* create workers */
     engine_create_workers(engine);
 
-    /* start command handler */
-    engine->cmdhandler_done = 0;
-
     /* write pidfile */
     if (util_write_pidfile(engine->config->pid_filename, engine->pid) == -1) {
         hsm_close();
         ods_log_error("[%s] unable to write pid file", engine_str);
+        if (engine->daemonize) {
+            ods_writeln(pipefd[1], "unable to write pid file");
+            write(pipefd[1], "\0", 1);
+            close(pipefd[1]);
+        }
         return ODS_STATUS_WRITE_PIDFILE_ERR;
     }
+    ods_log_info("[%s] enforcer started", engine_str);
+    error = hsm_open2(engine->config->repositories, hsm_prompt_pin);
+    if (error != HSM_OK) {
+        char* errorstr =  hsm_get_error(NULL);
+        if (!errorstr)
+            (void)asprintf(&errorstr, "error opening libhsm (errno %i)", error);
+        if (errorstr)
+            ods_log_error("[%s] %s", engine_str, errorstr);
+        if (engine->daemonize) {
+            if (errorstr) ods_writeln(pipefd[1], errorstr);
+            write(pipefd[1], "\0", 1);
+            close(pipefd[1]);
+        }
+        free(errorstr);
+        return ODS_STATUS_HSM_ERR;
+    }
+    engine->need_to_reload = 0;
+    engine_start_cmdhandler(engine);
 
+    write(pipefd[1], "\1", 1);
+    close(pipefd[1]);
+    if (!engine->daemonize) close(pipefd[0]);
+    engine->daemonize = 0; /* don't fork again on reload */
     return ODS_STATUS_OK;
 }
 
@@ -559,7 +607,6 @@ engine_init(engine_type* engine, int daemonize)
     engine->config = NULL;
     engine->workers = NULL;
     engine->cmdhandler = NULL;
-    engine->cmdhandler_done = 1;
     engine->init_setup_done = 0;
     engine->pid = getpid(); /* We need to do this again after fork() */
     engine->uid = -1;
@@ -586,28 +633,12 @@ engine_run(engine_type* engine, start_cb_t start, int single_run)
 {
     int error;
     ods_log_assert(engine);
-    ods_log_info("[%s] enforcer started", engine_str);
-    
-    error = hsm_open2(engine->config->repositories, hsm_prompt_pin);
-    if (error != HSM_OK) {
-        char* errorstr =  hsm_get_error(NULL);
-        if (errorstr != NULL) {
-            ods_log_error("[%s] %s", engine_str, errorstr);
-            free(errorstr);
-        } else {
-            ods_log_crit("[%s] error opening libhsm (errno %i)", engine_str,
-                error);
-        }
-        return 1;
-    }
-    
-    engine->need_to_reload = 0;
-    engine_start_cmdhandler(engine);
+
     engine_start_workers(engine);
 
     /* call the external start callback function */
     start(engine);
-    
+
     while (!engine->need_to_exit && !engine->need_to_reload) {
         if (single_run) {
             engine->need_to_exit = 1;
@@ -630,7 +661,7 @@ engine_run(engine_type* engine, start_cb_t start, int single_run)
     }
     ods_log_debug("[%s] enforcer halted", engine_str);
     engine_stop_workers(engine);
-    cmdhandler_stop(engine);
+    cmdhandler_stop(engine->cmdhandler);
     schedule_purge(engine->taskq); /* Remove old tasks in queue */
     hsm_close();
     return 0;

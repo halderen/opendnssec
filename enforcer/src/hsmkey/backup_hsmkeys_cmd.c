@@ -27,9 +27,11 @@
  *
  */
 
+#include<getopt.h>
 #include "config.h"
 
-#include "daemon/cmdhandler.h"
+#include "cmdhandler.h"
+#include "daemon/enforcercommands.h"
 #include "daemon/engine.h"
 #include "file.h"
 #include "log.h"
@@ -175,51 +177,58 @@ help(int sockfd)
 }
 
 static int
-handles(const char *cmd, ssize_t n)
+handles(const char *cmd)
 {
-    if (ods_check_command(cmd, n, "backup")) return 1;
-    if (ods_check_command(cmd, n, "backup prepare")) return 1;
-    if (ods_check_command(cmd, n, "backup commit")) return 1;
-    if (ods_check_command(cmd, n, "backup rollback")) return 1;
-    if (ods_check_command(cmd, n, "backup list")) return 1;
+    if (ods_check_command(cmd, "backup")) return 1;
+    if (ods_check_command(cmd, "backup prepare")) return 1;
+    if (ods_check_command(cmd, "backup commit")) return 1;
+    if (ods_check_command(cmd, "backup rollback")) return 1;
+    if (ods_check_command(cmd, "backup list")) return 1;
     return 0;
 }
 
-static const char *
-get_repo_param(const char *cmd, ssize_t n, char *buf, size_t buflen)
-{
-    #define NARGV 8
-    const char *argv[NARGV];
-    int argc;
-    const char *repository = NULL;
-    (void)n;
-
-    strncpy(buf, cmd, buflen);
-    argc = ods_str_explode(buf, NARGV, argv);
-    buf[sizeof(buf)-1] = '\0';
-    if (argc > NARGV) {
-        ods_log_warning("[%s] too many arguments for %s command",
-            module_str,cmd);
-        return NULL;
-    }
-    (void)ods_find_arg_and_param(&argc, argv, "repository", "r",
-        &repository);
-    return repository; /* ptr in buf */
-}
-
 static int
-run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
-    db_connection_t *dbconn)
+run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 {
+    #define NARGV 4
+    const char *argv[NARGV];
+    int argc = 0, long_index = 0, opt = 0;
+    const char *repository = NULL;
     char buf[ODS_SE_MAXLINE];
     int status;
-    const char *repository;
     db_clause_list_t* clause_list;
-    (void)engine;
+    db_connection_t* dbconn = getconnectioncontext(context);
 
-    if (!handles(cmd, n)) return -1;
-    repository = get_repo_param(cmd, n, buf, ODS_SE_MAXLINE);
-    
+    static struct option long_options[] = {
+        {"repository", required_argument, 0, 'r'},
+        {0, 0, 0, 0}
+    };
+
+    strncpy(buf, cmd, ODS_SE_MAXLINE);
+    buf[sizeof(buf)-1] = '\0';
+
+    argc = ods_str_explode(buf, NARGV, argv);
+    if (argc == -1) {
+        client_printf_err(sockfd, "too many arguments\n");
+        ods_log_error("[%s] too many arguments for %s command",
+                      module_str, backup_funcblock.cmdname);
+        return -1;
+    }
+
+    optind = 0;
+    while ((opt = getopt_long(argc, (char* const*)argv, "r:", long_options, &long_index)) != -1) {
+        switch (opt) {
+            case 'r':
+                repository = optarg;
+                break;
+            default:
+                client_printf_err(sockfd, "unknown arguments\n");
+                ods_log_error("[%s] unknown arguments for %s command",
+                               module_str, backup_funcblock.cmdname);
+                return -1;
+        }
+    }
+
     /* iterate the keys */
     if (!(clause_list = db_clause_list_new())) {
         ods_log_error("[%s] database error", module_str);
@@ -232,13 +241,13 @@ run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
     }
     
     /* Find out what we need to do */
-    if (ods_check_command(cmd,n,"backup prepare"))
+    if (ods_check_command(cmd,"backup prepare"))
         status = prepare(sockfd, dbconn, clause_list);
-    else if (ods_check_command(cmd,n,"backup commit"))
+    else if (ods_check_command(cmd,"backup commit"))
         status = commit(sockfd, dbconn, clause_list);
-    else if (ods_check_command(cmd,n,"backup rollback"))
+    else if (ods_check_command(cmd,"backup rollback"))
         status = rollback(sockfd, dbconn, clause_list);
-    else if (ods_check_command(cmd,n,"backup list"))
+    else if (ods_check_command(cmd,"backup list"))
         status = list(sockfd, dbconn, clause_list);
     else
         status = -1;
@@ -247,12 +256,6 @@ run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
     return status;
 }
 
-static struct cmd_func_block funcblock = {
+struct cmd_func_block backup_funcblock = {
     "backup", &usage, &help, &handles, &run
 };
-
-struct cmd_func_block*
-backup_funcblock(void)
-{
-    return &funcblock;
-}

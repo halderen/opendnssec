@@ -28,8 +28,10 @@
  */
 
 #include "config.h"
+#include <getopt.h>
 
-#include "daemon/cmdhandler.h"
+#include "cmdhandler.h"
+#include "daemon/enforcercommands.h"
 #include "daemon/engine.h"
 #include "file.h"
 #include "log.h"
@@ -82,7 +84,7 @@ get_dnskey(const char *id, const char *zone, const char *keytype, int alg, uint3
     /* Get the DNSKEY record */
     dnskey_rr = hsm_get_dnskey(hsm_ctx, key, sign_params);
 
-    free(key);
+    libhsm_key_free(key);
     hsm_sign_params_free(sign_params);
     hsm_destroy_context(hsm_ctx);
 	
@@ -105,7 +107,7 @@ get_dnskey(const char *id, const char *zone, const char *keytype, int alg, uint3
  */
 static int 
 print_ds_from_id(int sockfd, key_data_t *key, const char *zone,
-	const char* state, int bind_style)
+	const char* state, int bind_style, int print_sha1)
 {
     ldns_rr *dnskey_rr;
     ldns_rr *ds_sha_rr;
@@ -132,21 +134,23 @@ print_ds_from_id(int sockfd, key_data_t *key, const char *zone,
 
     if (bind_style) {
         ldns_rr_set_ttl(dnskey_rr, key_state_ttl (key_data_cached_ds(key)));
-        ds_sha_rr = ldns_key_rr2ds(dnskey_rr, LDNS_SHA1);
-        rrstr = ldns_rr2str(ds_sha_rr);
-        ldns_rr_free(ds_sha_rr);
-        /* TODO log error on failure */
-        (void)client_printf(sockfd, ";%s %s DS record (SHA1):\n%s", state, key_data_role_text(key), rrstr);
-        LDNS_FREE(rrstr);
-
-        ds_sha_rr = ldns_key_rr2ds(dnskey_rr, LDNS_SHA256);
-        rrstr = ldns_rr2str(ds_sha_rr);
-        ldns_rr_free(ds_sha_rr);
-        /* TODO log error on failure */
-        (void)client_printf(sockfd, ";%s %s DS record (SHA256):\n%s", state, key_data_role_text(key), rrstr);
-        LDNS_FREE(rrstr);
+        if (print_sha1) {
+            ds_sha_rr = ldns_key_rr2ds(dnskey_rr, LDNS_SHA1);
+            rrstr = ldns_rr2str(ds_sha_rr);
+            ldns_rr_free(ds_sha_rr);
+            /* TODO log error on failure */
+            (void)client_printf(sockfd, ";%s %s DS record (SHA1):\n%s", state, key_data_role_text(key), rrstr);
+            LDNS_FREE(rrstr);
+        } else {
+            ds_sha_rr = ldns_key_rr2ds(dnskey_rr, LDNS_SHA256);
+            rrstr = ldns_rr2str(ds_sha_rr);
+            ldns_rr_free(ds_sha_rr);
+            /* TODO log error on failure */
+            (void)client_printf(sockfd, ";%s %s DS record (SHA256):\n%s", state, key_data_role_text(key), rrstr);
+            LDNS_FREE(rrstr);
+        }
     } else {
-        rrstr = ldns_rr2str(dnskey_rr);
+        rrstr = ldns_rr2str_fmt(ldns_output_format_nocomments, dnskey_rr);
         /* TODO log error on failure */
         (void)client_printf(sockfd, "%s", rrstr);
         LDNS_FREE(rrstr);
@@ -158,7 +162,8 @@ print_ds_from_id(int sockfd, key_data_t *key, const char *zone,
 
 static int
 perform_keystate_export(int sockfd, db_connection_t *dbconn,
-	const char *zonename, const char *keytype, const char *keystate, int all, int bind_style)
+	const char *zonename, const char *keytype, const char *keystate,
+        int all, int bind_style, int print_sha1)
 {
     key_data_list_t *key_list = NULL;
     key_data_t *key;
@@ -215,7 +220,7 @@ perform_keystate_export(int sockfd, db_connection_t *dbconn,
 
         /* check return code TODO */
         if (key_data_cache_hsm_key(key) == DB_OK) {
-            if (print_ds_from_id(sockfd, key, (const char*)azonename?azonename:zonename, (const char*)map_keystate(key), bind_style)) {
+            if (print_ds_from_id(sockfd, key, (const char*)azonename?azonename:zonename, (const char*)map_keystate(key), bind_style, print_sha1)) {
                 ods_log_error("[%s] Error in print_ds_from_id", module_str);
                 client_printf_err(sockfd, "Error in print_ds_from_id \n");
             }
@@ -236,11 +241,11 @@ static void
 usage(int sockfd)
 {
     client_printf(sockfd,
-                     "key export\n"
-                     "	--zone <zone> | --all			aka -z | -a \n"
-                     "	--keystate <state>			aka -e\n"
-                     "	--keytype <type>			aka -t \n"
-                     "	[--ds]					aka -d\n"
+         "key export\n"
+         "	--zone <zone> | --all			aka -z | -a \n"
+         "	--keystate <state>			aka -e\n"
+         "	--keytype <type>			aka -t \n"
+         "	[--ds [--sha1]]				aka -d [-s]\n"
     );
 }
 
@@ -248,57 +253,87 @@ static void
 help(int sockfd)
 {
     client_printf(sockfd,
-                     "Export DNSKEY(s) for a given zone or all of them from the database.\n"
-                     "If keytype and keystate are not specified, KSKs which are waiting for command ds-submit, ds-seen, ds-retract and ds-gone are shown. Otherwise both keystate and keytype must be given.\n"
-                     "\nOptions:\n"
-                     "zone|all	specify a zone or all of them\n"
-                     "keystate	limit the output to a given state\n"
-                     "keytype		limit the output to a given type, can be ZSK, KSK, or CSK\n"
-                     "ds		export DS in BIND format which can be used for upload to a registry\n\n");
+         "Export DNSKEY(s) for a given zone or all of them from the database.\n"
+         "If keytype and keystate are not specified, KSKs which are waiting for command ds-submit, ds-seen, ds-retract and ds-gone are shown. Otherwise both keystate and keytype must be given.\n"
+
+         "\nOptions:\n"
+         "zone|all	specify a zone or all of them\n"
+         "keystate	limit the output to a given state\n"
+         "keytype		limit the output to a given type, can be ZSK, KSK, or CSK\n"
+         "ds		export DS in BIND format which can be used for upload to a registry\n"
+         "sha1		When outputting DS print sha1 instead of sha256\n");
 }
 
 static int
-handles(const char *cmd, ssize_t n)
+run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 {
-    return ods_check_command(cmd, n, key_export_funcblock()->cmdname)?1:0;
-}
-
-static int
-run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
-	db_connection_t *dbconn)
-{
-    #define NARGV 8
+    #define NARGV 11
     char buf[ODS_SE_MAXLINE];
     const char *argv[NARGV];
-    int argc;
+    int argc = 0;
     const char *zonename = NULL;
     const char* keytype = NULL;
     const char* keystate = NULL;
     zone_db_t * zone = NULL;
     int all = 0;
-    (void)engine;
+    int ds = 0;
+    int bsha1 = 0;
+    int long_index = 0, opt = 0;
+    db_connection_t* dbconn = getconnectioncontext(context);
+
+    static struct option long_options[] = {
+        {"zone", required_argument, 0, 'z'},
+        {"keytype", required_argument, 0, 't'},
+        {"keystate", required_argument, 0, 'e'},
+        {"all", no_argument, 0, 'a'},
+        {"ds", no_argument, 0, 'd'},
+        {"sha1", no_argument, 0, 's'},
+        {0, 0, 0, 0}
+    };
 	
-    ods_log_debug("[%s] %s command", module_str, key_export_funcblock()->cmdname);
-    cmd = ods_check_command(cmd, n, key_export_funcblock()->cmdname);
-	
+    ods_log_debug("[%s] %s command", module_str, key_export_funcblock.cmdname);
+
     /* Use buf as an intermediate buffer for the command.*/
     strncpy(buf, cmd, sizeof(buf));
     buf[sizeof(buf)-1] = '\0';
-	
+
     /* separate the arguments*/
     argc = ods_str_explode(buf, NARGV, argv);
-    if (argc > NARGV) {
+    if (argc == -1) {
+        client_printf_err(sockfd, "too many arguments\n");
         ods_log_error("[%s] too many arguments for %s command",
-                           module_str, key_export_funcblock()->cmdname);
-        client_printf_err(sockfd,"too many arguments\n");
+                      module_str, key_export_funcblock.cmdname);
         return -1;
     }
-	
-    bool bds = 0;
-    (void)ods_find_arg_and_param(&argc,argv,"zone","z",&zonename);
-    (void)ods_find_arg_and_param(&argc, argv, "keytype", "t", &keytype);
-    (void)ods_find_arg_and_param(&argc, argv, "keystate", "e", &keystate);
-    all = ods_find_arg(&argc, argv, "all", "a") > -1 ? 1 : 0;
+
+    optind = 0;
+    while ((opt = getopt_long(argc, (char* const*)argv, "z:t:e:ads", long_options, &long_index)) != -1) {
+        switch (opt) {
+            case 'z':
+                zonename = optarg;
+                break;
+            case 't':
+                keytype = optarg;
+                break;
+            case 'e':
+                keystate = optarg;
+                break;
+            case 'a':
+                all = 1;
+                break;
+            case 'd':
+                ds = 1;
+                break;
+            case 's':
+                bsha1 = 1;
+                break; 
+            default:
+                client_printf_err(sockfd, "unknown arguments\n");
+                ods_log_error("[%s] unknown arguments for %s command",
+                                module_str, key_export_funcblock.cmdname);
+                return -1;
+        }
+    }
 
     if (keytype) {
         if (strcasecmp(keytype, "KSK") && strcasecmp(keytype, "ZSK") && strcasecmp(keytype, "CSK")) {
@@ -316,18 +351,9 @@ run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
         }
     }
 
-    if (ods_find_arg(&argc,argv,"ds","d") >= 0)
-        bds = 1;
-
-    if (argc) {
-        ods_log_error("[%s] unknown arguments for %s command",
-                              module_str, key_export_funcblock()->cmdname);
-        client_printf_err(sockfd,"unknown arguments\n");
-        return -1;
-    }
 
     if ((!zonename && !all) || (zonename && all)) {
-        ods_log_error("[%s] expected either --zone or --all for %s command", module_str, key_export_funcblock()->cmdname);
+        ods_log_error("[%s] expected either --zone or --all for %s command", module_str, key_export_funcblock.cmdname);
         client_printf_err(sockfd, "expected either --zone or --all \n");
         return -1;
     }
@@ -350,15 +376,9 @@ run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
     }
 
     /* perform task immediately */
-    return perform_keystate_export(sockfd, dbconn, zonename, (const char*) keytype, (const char*) keystate, all, bds?1:0);
+    return perform_keystate_export(sockfd, dbconn, zonename, (const char*) keytype, (const char*) keystate, all, ds, bsha1);
 }
 
-static struct cmd_func_block funcblock = {
-    "key export", &usage, &help, &handles, &run
+struct cmd_func_block key_export_funcblock = {
+    "key export", &usage, &help, NULL, &run
 };
-
-struct cmd_func_block*
-key_export_funcblock(void)
-{
-    return &funcblock;
-}

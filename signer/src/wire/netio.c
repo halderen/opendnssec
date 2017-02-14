@@ -335,17 +335,27 @@ netio_dispatch(netio_type* netio, const struct timespec* timeout,
 void
 netio_cleanup(netio_type* netio)
 {
-    netio_handler_list_type* handler;
-
     ods_log_assert(netio);
-
     while (netio->handlers) {
-        handler = netio->handlers->next;
-        /* handler and handler->user_data are managed by something else
-         * it seems */
-        free(netio->handlers);
-        netio->handlers = handler;
+        netio_handler_list_type* handler = netio->handlers;
+        netio->handlers = handler->next;
+        if (handler->handler->free_handler) {
+            free(handler->handler->user_data);
+            free(handler->handler);
+        }
+        free(handler);
     }
+    free(netio);
+}
+
+/**
+ * Clean up netio instance
+ */
+void
+netio_cleanup_shallow(netio_type* netio)
+{
+    ods_log_assert(netio);
+    free(netio->handlers);
     free(netio);
 }
 

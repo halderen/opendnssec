@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Nominet UK. All rights reserved.
+ * Copyright (c) 2016 NLNet Labs. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -21,10 +21,25 @@
  * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
-#ifndef KASPCHECK_H
-#define KASPCHECK_H
+/**
+ * Command handler.
+ *
+ */
 
+#ifndef DAEMON_ENFORCERCOMMANDS_H
+#define DAEMON_ENFORCERCOMMANDS_H
 
-#endif /* KASPCHECK_H */
+#include "config.h"
+#include "cmdhandler.h"
+#include "engine.h"
+#include "db/db_connection.h"
+
+struct cmd_func_block** enforcercommands;
+
+engine_type* getglobalcontext(cmdhandler_ctx_type*);
+db_connection_t* getconnectioncontext(cmdhandler_ctx_type*);
+
+#endif

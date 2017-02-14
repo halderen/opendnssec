@@ -28,8 +28,10 @@
  */
 
 #include "config.h"
+#include <getopt.h>
 
-#include "daemon/cmdhandler.h"
+#include "cmdhandler.h"
+#include "daemon/enforcercommands.h"
 #include "daemon/engine.h"
 #include "str.h"
 #include "enforcer/enforce_task.h"
@@ -160,24 +162,25 @@ help(int sockfd)
 }
 
 static int
-handles(const char *cmd, ssize_t n)
-{
-	return ods_check_command(cmd, n, key_rollover_funcblock()->cmdname)?1:0;
-}
-
-static int
-run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
-	db_connection_t *dbconn)
+run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 {
 	char buf[ODS_SE_MAXLINE];
-	#define NARGV 4
+	#define NARGV 6
 	const char *argv[NARGV];
-	int argc, error, nkeytype = 0;
+	int argc = 0, error, nkeytype = 0;
+	int long_index = 0, opt = 0;
 	const char *zone = NULL, *keytype = NULL, *policy = NULL;
+        db_connection_t* dbconn = getconnectioncontext(context);
+        engine_type* engine = getglobalcontext(context);
 
-	ods_log_debug("[%s] %s command", module_str, key_rollover_funcblock()->cmdname);
+	static struct option long_options[] = {
+		{"zone", required_argument, 0, 'z'},
+		{"policy", required_argument, 0, 'p'},
+		{"keytype", required_argument, 0, 't'},
+		{0, 0, 0, 0}
+	};
 
-	cmd = ods_check_command(cmd, n, key_rollover_funcblock()->cmdname);
+	ods_log_debug("[%s] %s command", module_str, key_rollover_funcblock.cmdname);
 
 	/* Use buf as an intermediate buffer for the command. */
 	strncpy(buf, cmd, sizeof(buf));
@@ -185,32 +188,42 @@ run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
 
 	/* separate the arguments */
 	argc = ods_str_explode(buf, NARGV, argv);
-	if (argc > NARGV) {
-		ods_log_warning("[%s] too many arguments for %s command",
-						module_str, key_rollover_funcblock()->cmdname);
-		client_printf(sockfd,"too many arguments\n");
+	if (argc == -1) {
+		client_printf_err(sockfd, "too many arguments\n");
+		ods_log_error("[%s] too many arguments for %s command",
+				module_str, key_rollover_funcblock.cmdname);
 		return -1;
 	}
-	
-	(void)ods_find_arg_and_param(&argc,argv,"policy","p",&policy);
-	(void)ods_find_arg_and_param(&argc,argv,"zone","z",&zone);
-	(void)ods_find_arg_and_param(&argc,argv,"keytype","t",&keytype);
 
-	if (argc) {
-		ods_log_warning("[%s] unknown arguments for %s command",
-			module_str, key_rollover_funcblock()->cmdname);
-		client_printf(sockfd,"unknown arguments\n");
-		return -1;
+	optind = 0;
+	while ((opt = getopt_long(argc, (char* const*)argv, "p:z:t:", long_options, &long_index)) != -1) {
+		switch (opt) {
+			case 'z':
+				zone = optarg;
+				break;
+			case 'p':
+				policy = optarg;
+				break;
+			case 't':
+				keytype = optarg;
+				break;
+			default:
+				client_printf_err(sockfd, "unknown arguments\n");
+				ods_log_error("[%s] unknown arguments for %s command",
+						module_str, key_rollover_funcblock.cmdname);
+				return -1;
+		}
 	}
+
 	if (!zone && !policy) {
 		ods_log_warning("[%s] expected either --zone <zone> or --policy <policy> for %s command",
-			module_str, key_rollover_funcblock()->cmdname);
+			module_str, key_rollover_funcblock.cmdname);
 		client_printf(sockfd,"expected either --zone <zone> or --policy <policy> option\n");
 		return -1;
 	}
 	else if (zone && policy) {
 		 ods_log_warning("[%s] expected either --zone <zone> or --policy <policy> for %s command",
-                        module_str, key_rollover_funcblock()->cmdname);
+                        module_str, key_rollover_funcblock.cmdname);
                 client_printf(sockfd,"expected either --zone <zone> or --policy <policy> option\n");
                 return -1;
 	}
@@ -238,12 +251,6 @@ run(int sockfd, engine_type* engine, const char *cmd, ssize_t n,
 	return error;
 }
 
-static struct cmd_func_block funcblock = {
-	"key rollover", &usage, &help, &handles, &run
+struct cmd_func_block key_rollover_funcblock = {
+	"key rollover", &usage, &help, NULL, &run
 };
-
-struct cmd_func_block*
-key_rollover_funcblock(void)
-{
-	return &funcblock;
-}

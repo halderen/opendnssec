@@ -38,21 +38,14 @@
 typedef struct engine_struct engine_type;
 
 #include "daemon/cfg.h"
-#include "daemon/cmdhandler.h"
+#include "cmdhandler.h"
 #include "scheduler/task.h"
+#include "scheduler/schedule.h"
 #include "db/db_configuration.h"
 #include "db/db_connection.h"
 
-/**
- * Engine stuff.
- *
- */
 struct engine_struct {
     engineconfig_type* config;
-    worker_type** workers;
-    schedule_type* taskq;
-    cmdhandler_type* cmdhandler;
-    int cmdhandler_done;
 
     pid_t pid;
     uid_t uid;
@@ -61,6 +54,11 @@ struct engine_struct {
     int daemonize;
     int need_to_exit;
     int need_to_reload;
+    int init_setup_done;
+
+    worker_type** workers;
+    schedule_type* taskq;
+    cmdhandler_type* cmdhandler;
 
     /* Main thread blocks on this condition when there is nothing to do */
     pthread_cond_t signal_cond;
@@ -72,10 +70,11 @@ struct engine_struct {
 
 /**
  * Try to open a connection to the database.
- * \param dbcfg_list, database configuration list
+ * \param engine, the engine containing database configuration
  * \return connection on success, NULL on failure.
  */
-db_connection_t* get_database_connection(db_configuration_list_t* dbcfg_list);
+db_connection_t* get_database_connection(engine_type* engine);
+
 
 /**
  * Setup the engine started by engine_create
