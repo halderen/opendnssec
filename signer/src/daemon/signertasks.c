@@ -425,17 +425,6 @@ do_signzone(task_type* task, const char* zonename, void* zonearg, void *contexta
 
     /* start timer */
     start = time(NULL);
-    if (zone->stats) {
-        pthread_mutex_lock(&zone->stats->stats_lock);
-        if (!zone->stats->start_time) {
-            zone->stats->start_time = start;
-        }
-        zone->stats->sig_count = 0;
-        zone->stats->sig_soa_count = 0;
-        zone->stats->sig_reuse = 0;
-        zone->stats->sig_time = 0;
-        pthread_mutex_unlock(&zone->stats->stats_lock);
-    }
     /* check the HSM connection before queuing sign operations */
     if (hsm_check_context()) {
         ods_log_error("signer instructed to reload due to hsm reset in sign task");
@@ -482,19 +471,6 @@ do_signzone(task_type* task, const char* zonename, void* zonearg, void *contexta
                 worker->name, task->owner, ods_status2str(status));
         returnscheduletime =  schedule_DEFER; /* backoff */
     } else {
-      if (zone->stats) {
-        pthread_mutex_lock(&zone->stats->stats_lock);
-        zone->stats->sig_time = (end - start);
-        if (zone->stats->sort_done == 0 &&
-            (zone->stats->sig_count <= zone->stats->sig_soa_count)) {
-            ods_log_verbose("skip write zone %s serial %u (zone not "
-                "changed)", (zone->name?zone->name:"(null)"),
-                (zone->inboundserial?(unsigned int)*zone->inboundserial:0));
-            stats_clear(zone->stats);
-            pthread_mutex_unlock(&zone->stats->stats_lock);
-        }
-        pthread_mutex_unlock(&zone->stats->stats_lock);
-      }
     }
     status = names_viewcommit(signview);
     if(status) {
@@ -701,6 +677,20 @@ do_writezone(task_type* task, const char* zonename, void* zonearg, void *context
     }
 
     tools_output(zone, engine);
+
+    names_view_type view;
+    names_iterator iter;
+    recordset_type record;
+    view = zonelist_obtainresource(NULL, zone, NULL, offsetof(zone_type, changesview));
+    names_viewreset(view);
+    fprintf(stderr, "BERRY MARK\n");
+    for (iter = names_viewiterator(view, names_iteratorchangedeletes, *(zone->outboundserial) - 1); names_iterate(&iter, &record); names_advance(&iter, NULL)) {
+        fprintf(stderr, "BERRY RRSET DEL %s\n", names_recordgetname(record));
+    }
+    for (iter = names_viewiterator(view, names_iteratorchangeinserts, *(zone->outboundserial) - 1); names_iterate(&iter, &record); names_advance(&iter, NULL)) {
+        fprintf(stderr, "BERRY RRSET INS %s\n", names_recordgetname(record));
+    }
+    zonelist_releaseresource(NULL, zone, NULL, offsetof(zone_type, changesview), view);
 
     if(zone->operatingconf->zonefile_freq > 0) {
         if(--(zone->operatingconf->zonefile_timer) <= 0) {

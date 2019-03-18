@@ -42,7 +42,6 @@ signertest_LDADD = \
 	../signer/keys.o \
 	../signer/nsec3params.o \
 	../signer/signconf.o \
-	../signer/stats.o \
 	../signer/tools.o \
 	../signer/zone.o \
 	../signer/zonelist.o \

@@ -107,7 +107,7 @@ zone_create(char* name, ldns_rr_class klass)
         zone_cleanup(zone);
         return NULL;
     }
-    zone->stats = stats_create();
+    zone->signaturescreated = 0;
     return zone;
 }
 
@@ -479,7 +479,6 @@ zone_cleanup(zone_type* zone)
     notify_cleanup(zone->notify);
     signconf_cleanup(zone->signconf);
     pthread_mutex_unlock(&zone->zone_lock);
-    stats_cleanup(zone->stats);
     free(zone->notify_command);
     free(zone->notify_args);
     free((void*)zone->policy_name);

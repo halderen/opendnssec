@@ -37,7 +37,6 @@ ods_signerd_SOURCES=		ods-signerd.c \
 				signer/keys.c signer/keys.h \
 				signer/nsec3params.c signer/nsec3params.h \
 				signer/signconf.c signer/signconf.h \
-				signer/stats.c signer/stats.h \
 				signer/tools.c signer/tools.h \
 				signer/zone.c signer/zone.h \
 				signer/zonelist.c signer/zonelist.h \

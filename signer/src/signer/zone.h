@@ -45,7 +45,6 @@ typedef struct zone_struct zone_type;
 #include "locks.h"
 #include "status.h"
 #include "signer/signconf.h"
-#include "signer/stats.h"
 #include "wire/buffer.h"
 #include "wire/notify.h"
 #include "wire/xfrd.h"
@@ -103,8 +102,9 @@ struct zone_struct {
     /* zone transfers */
     xfrd_type* xfrd;
     notify_type* notify;
-    /* statistics */
-    stats_type* stats;
+
+    uint64_t signaturescreated;
+
     pthread_mutex_t zone_lock;
     pthread_mutex_t xfr_lock;
     /* backing store for rrsigs (both domain as denial) */
@@ -190,7 +190,6 @@ ldns_rr* zone_lookup_apex_rrset(names_view_type view, ldns_rr_type type,ldns_rr*
  * Add RR.
  * \param[in] zone zone
  * \param[in] rr rr
- * \param[in] do_stats true if we need to maintain statistics
  * \return ods_status status
  *         ODS_STATUS_OK: rr to be added to zone
  *         ODS_STATUS_UNCHANGED: rr not added to zone, rr already exists
@@ -203,7 +202,6 @@ ods_status zone_add_rr(zone_type* zone, names_view_type view, ldns_rr* rr);
  * Delete RR.
  * \param[in] zone zone
  * \param[in] rr rr
- * \param[in] do_stats true if we need to maintain statistics
  * \return ods_status status
  *         ODS_STATUS_OK: rr to be removed from zone
  *         ODS_STATUS_UNCHANGED: rr not removed from zone, rr does not exist

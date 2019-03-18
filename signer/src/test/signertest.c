@@ -787,6 +787,17 @@ testSignNL(void)
 
     signzone(zone);
 
+    /*view = zonelist_obtainresource(NULL, zone, NULL, offsetof(zone_type, inputview));
+    names_viewreset(view);
+    logger_mark_performance("done updating indices after full sign");
+    httpd_dispatch(view, makecall(zone->name, "domain.example.com.", NULL));
+    names_viewcommit(view);
+    zonelist_releaseresource(NULL, zone, NULL, offsetof(zone_type, inputview),view);
+    logger_mark_performance("done make change");
+
+    resignzone(zone);
+    logger_mark_performance("done sign change");*/
+
     outputzone(zone);
     logger_mark_performance("done output zone 1");
 
@@ -800,6 +811,21 @@ testSignNL(void)
 
     disposezone(zone);
     logger_mark_performance("done disposing zone");
+
+    /*zone = zone_create(strdup("nl"), LDNS_RR_CLASS_IN);
+    zone->baseview = names_viewcreate(NULL, names_view_BASE[0], &names_view_BASE[1]);
+    zoneapex = ldns_rdf2str(zone->apex);
+    notrestored = names_viewrestore(zone->baseview, zoneapex, -1, NULL);
+    logger_mark_performance("done reading statefile");
+    CU_ASSERT_FALSE(notrestored);
+    names_viewconfig(zone->baseview, &(zone->signconf));
+    zone->inputview = zonelist_createresource(zone->baseview,   names_view_INPUT[0],   &names_view_INPUT[1],   1, 5);
+    zone->prepareview = zonelist_createresource(zone->baseview, names_view_PREPARE[0], &names_view_PREPARE[1], 1, 1);
+    zone->neighview = zonelist_createresource(zone->baseview,   names_view_NEIGHB[0],  &names_view_NEIGHB[1],  1, 1);
+    zone->signview = zonelist_createresource(zone->baseview,    names_view_SIGN[0],    &names_view_SIGN[1],    1, 1);
+    zone->outputview = zonelist_createresource(zone->baseview,  names_view_OUTPUT[0],  &names_view_OUTPUT[1],  1, 4);
+    zone->changesview = zonelist_createresource(zone->baseview, names_view_CHANGES[0], &names_view_CHANGES[1], 1, 1);
+    logger_mark_performance("done rebuilding internal state");*/
 }
 
 
@@ -892,6 +918,40 @@ testSignFastChange(void)
     status = names_viewcommit(inputview);
     CU_ASSERT_EQUAL(status,0);
     zonelist_releaseresource(NULL, zone, NULL, offsetof(zone_type, inputview), inputview);
+
+    reresignzone(zone);
+    outputzone(zone);
+    disposezone(zone);
+    CU_ASSERT_EQUAL((system("ldns-verify-zone -t 20180926013741 signed.zone")), 0);
+}
+
+ void
+testSignStatistics(void)
+{
+    int status;
+    zone_type* zone;
+    set_time_now(1537918509);
+    logger_mark_performance("setup files");
+    usefile("example.com.state", NULL);
+    usefile("signer.db", NULL);
+    usefile("zones.xml", "zones.xml.example");
+    usefile("unsigned.zone", "unsigned.zone.simple");
+    usefile("signconf.xml", "signconf.xml.nsec");
+    set_time_now(1537918509);
+    zonelist_update(engine->zonelist, engine->config->zonelist_filename_signer);
+    zone = zonelist_lookup_zone_by_name(engine->zonelist, "example.com", LDNS_RR_CLASS_IN);
+    signzone(zone);
+
+    names_view_type inputview;
+    inputview = zonelist_obtainresource(NULL, zone, NULL, offsetof(zone_type, inputview));
+    names_viewreset(inputview);
+
+    status = httpd_dispatch(inputview, makecall(zone->name, "citroen.example.com.", "citroen.example.com. NS ns1.example.com.", NULL));
+    CU_ASSERT_EQUAL(status, 0);
+    status = names_viewcommit(inputview);
+    CU_ASSERT_EQUAL(status,0);
+    zonelist_releaseresource(NULL, zone, NULL, offsetof(zone_type, inputview), inputview);
+    logger_configurecls("signing", logger_DIAG, logger_log_stderr);
 
     reresignzone(zone);
     outputzone(zone);
@@ -995,7 +1055,7 @@ testBackup(void)
     zonelist_destroyresource(zone->changesview);
     names_viewdestroy(zone->baseview);
     zone_cleanup(zone);
- }
+}
 
 extern void testNothing(void);
 extern void testIterator(void);
@@ -1010,6 +1070,7 @@ extern void testSignNL(void);
 extern void testSignFastRemove(void);
 extern void testSignFastInsert(void);
 extern void testSignFastChange(void);
+extern void testSignStatistics(void);
 extern void testDisposing(void);
 
 struct test_struct {
@@ -1034,6 +1095,7 @@ struct test_struct {
     { "signer", "testSignFastRemove",  "test fast updates deletes" },
     { "signer", "testSignFastInsert",  "test fast updates inserts" },
     { "signer", "testSignFastChange",  "test fast updates changes" },
+    { "signer", "testSignStatistics",  "test counting the number of signatures when resigning" },
     { "signer", "testDisposing",       "test dispose" },
     { "signer", "testBackup",          "test migration backup files" },
     { "signer", "-testSignNL",          "test NL signing" },

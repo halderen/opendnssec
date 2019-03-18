@@ -117,13 +117,6 @@ tools_input(zone_type* zone)
         return status;
     } else {
 
-    if (zone->stats) {
-        pthread_mutex_lock(&zone->stats->stats_lock);
-        zone->stats->sort_done = 0;
-        zone->stats->sort_count = 0;
-        zone->stats->sort_time = 0;
-        pthread_mutex_unlock(&zone->stats->stats_lock);
-    }
     /* Input Adapter */
     start = time(NULL);
     status = adapter_read(zone, view);
@@ -137,14 +130,6 @@ tools_input(zone_type* zone)
         }
     }
     end = time(NULL);
-    if ((status == ODS_STATUS_OK || status == ODS_STATUS_UNCHANGED)
-        && zone->stats) {
-        pthread_mutex_lock(&zone->stats->stats_lock);
-        zone->stats->start_time = start;
-        zone->stats->sort_time = (end-start);
-        zone->stats->sort_done = 1;
-        pthread_mutex_unlock(&zone->stats->stats_lock);
-    }
     }
     switch(status) {
         case ODS_STATUS_OK:
@@ -241,17 +226,6 @@ tools_output(zone_type* zone, engine_type* engine)
                 }
                 break;
         }
-    }
-    /* log stats */
-    if (zone->stats) {
-        pthread_mutex_lock(&zone->stats->stats_lock);
-        zone->stats->end_time = time(NULL);
-        ods_log_debug("[%s] log stats for zone %s serial %u", tools_str,
-            (zone->name?zone->name:"(null)"), (unsigned) (zone->outboundserial ? *zone->outboundserial : 0));
-        stats_log(zone->stats, zone->name, (zone->outboundserial ? *zone->outboundserial : 0),
-            zone->signconf->nsec_type);
-        stats_clear(zone->stats);
-        pthread_mutex_unlock(&zone->stats->stats_lock);
     }
     if (engine->dnshandler) {
         /* FIXME, this should become a separate process that is executed asynchronously, especially
