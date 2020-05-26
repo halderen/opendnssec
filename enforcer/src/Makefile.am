@@ -24,22 +24,6 @@ bin_PROGRAMS = ods-kaspcheck
 sbin_PROGRAMS =	ods-enforcerd ods-enforcer ods-enforcer-db-setup ods-migrate
 #dist_man1_MANS = utils/ods-kaspcheck.1
 
-BACKEND_SOURCES_CUSTOM =
-BACKEND_LDFLAGS_CUSTOM = -lm
-BACKEND_SCHEMA_CUSTOM =
-
-if USE_SQLITE
-BACKEND_SOURCES_CUSTOM += db/db_backend_sqlite.c db/db_backend_sqlite.h
-BACKEND_SCHEMA_CUSTOM += db/db_schema_sqlite.c db/db_schema_sqlite.h \
-	db/db_data_sqlite.c db/db_data_sqlite.h db/schema.sqlite
-endif
-
-if USE_MYSQL
-BACKEND_SOURCES_CUSTOM += db/db_backend_mysql.c db/db_backend_mysql.h
-BACKEND_SCHEMA_CUSTOM += db/db_schema_mysql.c db/db_schema_mysql.h \
-	db/db_data_mysql.c db/db_data_mysql.h db/schema.mysql
-endif
-
 ods_enforcerd_SOURCES = \
 	ods-enforcerd.c \
 	daemon/cfg.c daemon/cfg.h \
@@ -116,8 +100,7 @@ ods_enforcerd_SOURCES = \
 	db/policy_key.c db/policy_key_ext.c db/policy_key_ext.h db/policy_key.h \
 	db/hsm_key.c db/hsm_key_ext.c db/hsm_key_ext.h db/hsm_key.h \
 	db/database_version.c db/database_version.h db/database_version_ext.c db/database_version_ext.h \
-	db/db_enum.h \
-	$(BACKEND_SOURCES_CUSTOM)
+	db/db_enum.h
 
 ods_enforcerd_LDADD = \
 	$(LIBHSM) \
@@ -147,9 +130,6 @@ ods_migrate_LDADD = \
 #ods_migrate_LDFLAGS = \
 #	-Wl,--no-as-needed @ENFORCER_DB_LIBS@ -Wl,--as-needed
 
-ods_enforcerd_LDFLAGS = \
-	$(BACKEND_LDFLAGS_CUSTOM)
-
 ods_enforcer_SOURCES = \
 	ods-enforcer.c
 
@@ -163,8 +143,7 @@ ods_enforcer_LDADD = \
 ods_enforcer_db_setup_SOURCES = \
 	ods-enforcer-db-setup.c \
 	daemon/cfg.c daemon/cfg.h \
-	parser/confparser.c parser/confparser.h \
-	$(BACKEND_SCHEMA_CUSTOM)
+	parser/confparser.c parser/confparser.h
 
 ods_enforcer_db_setup_LDADD = \
 	$(LIBHSM) \
@@ -174,9 +153,6 @@ ods_enforcer_db_setup_LDADD = \
 	@PTHREAD_LIBS@ \
 	@RT_LIBS@ \
 	@ENFORCER_DB_LIBS@
-
-ods_enforcer_db_setup_LDFLAGS = \
-	$(BACKEND_LDFLAGS_CUSTOM)
 
 ods_kaspcheck_SOURCES = utils/kaspcheck.c utils/kc_helper.c utils/kc_helper.h
 
