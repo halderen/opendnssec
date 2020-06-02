@@ -35,8 +35,7 @@
 #include "str.h"
 #include "log.h"
 #include "clientpipe.h"
-#include "db/policy.h"
-#include "db/zone_db.h"
+#include "db/dbw.h"
 #include "keystate/zonelist_update.h"
 #include "enforcer/enforce_task.h"
 #include "hsmkey/hsm_key_factory.h"
@@ -91,7 +90,7 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
     const char* argv[NARGV];
     int argc = 0;
     const char *zone_name = NULL;
-    const char *policy_name = NULL;
+    const char *policy_name = "default";
     const char *signconf = NULL;
     const char *input = NULL;
     const char *output = NULL;
@@ -178,11 +177,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
         client_printf_err(sockfd, "expected option --zone <zone>\n");
         free(buf);
         return -1;
-    }
-
-    if ((zone = zone_db_new_get_by_name(dbconn, zone_name))) {
+    } else if (dbw_zone_exists(dbconn, zone_name)) {
         client_printf_err(sockfd, "Unable to add zone, zone already exists!\n");
-        zone_db_free(zone);
         free(buf);
         return 1;
     }
@@ -322,8 +318,7 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
         if (access(zone_db_output_adapter_uri(zone), F_OK) == -1) {
             client_printf_err(sockfd, "WARNING: The output file %s for zone %s does not currently exist. The zone will be added to the database anyway. \n", zone_db_output_adapter_uri(zone), zone_name);
             ods_log_warning("[%s] WARNING: The output file %s for zone %s does not currently exist. The zone will be added to the database anyway.", module_str, zone_db_output_adapter_uri(zone), zone_name);
-        }
-        else if (access(zone_db_output_adapter_uri(zone), R_OK)) {
+        } else if (access(zone_db_output_adapter_uri(zone), R_OK)) {
             client_printf_err(sockfd, "WARNING: Read access to output file %s for zone %s denied! \n ", zone_db_output_adapter_uri(zone), zone_name);
             ods_log_warning("[%s] WARNING: Read access to output file %s for zone %s denied! ", module_str, zone_db_output_adapter_uri(zone), zone_name);
         }
@@ -334,16 +329,14 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
             if (zone_db_set_signconf_path(zone, signconf)) {
                 client_printf_err(sockfd, "Unable to add zone, failed to set signconf!\n");
             }
-        }
-        else {
+        } else {
             if (snprintf(path, sizeof(path), "%s/signconf/%s", OPENDNSSEC_STATE_DIR, signconf) >= (int)sizeof(path)
                 || zone_db_set_signconf_path(zone, path))
             {
                 client_printf_err(sockfd, "Unable to add zone, failed to set signconf!\n");
             }
         }
-    }
-    else {
+    } else {
         if (snprintf(path, sizeof(path), "%s/signconf/%s.xml", OPENDNSSEC_STATE_DIR, zone_name) >= (int)sizeof(path)
             || zone_db_set_signconf_path(zone, path))
         {
@@ -386,24 +379,18 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
         ods_log_error("[%s] internal zonelist update failed", module_str);
         client_printf_err(sockfd, "Unable to update the internal zonelist %s, updates will not reach the Signer!\n", path);
         ret = 1;
-    }
-    else {
+    } else {
         ods_log_info("[%s] internal zonelist updated successfully", module_str);
     }
 
     /*
      * On successful generate HSM keys and add/flush enforce task.
      */
+    /*(void)dbw_commit(db);*/
     if (!suspend) {
-        if (!engine->config->manual_keygen)
-            (void)hsm_key_factory_generate_policy(engine, dbconn, policy, 0);
         ods_log_debug("[%s] Flushing enforce task", module_str);
         (void)schedule_task(engine->taskq, enforce_task(engine, zone->name), 1, 0);
     }
-
-    policy_free(policy);
-
-    zone_db_free(zone);
 
     return ret;
 }

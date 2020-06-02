@@ -28,7 +28,7 @@
 #ifndef _KEYSTATE_DS_H_
 #define _KEYSTATE_DS_H_
 
-#include "db/key_data.h"
+#include "db/dbw.h"
 
 int
 change_keys_from_to(db_connection_t *dbconn, int sockfd,

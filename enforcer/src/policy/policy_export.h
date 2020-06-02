@@ -29,8 +29,7 @@
 #ifndef _POLICY_POLICY_EXPORT_H_
 #define _POLICY_POLICY_EXPORT_H_
 
-#include "db/db_connection.h"
-#include "db/policy.h"
+#include "db/dbw.h"
 
 /**
  * Indicates a successful policy export.

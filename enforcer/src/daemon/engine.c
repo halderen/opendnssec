@@ -163,7 +163,7 @@ engine_create_workers(engine_type* engine)
     ods_log_assert(engine);
     ods_log_assert(engine->config);
     engine->workers = (worker_type**) malloc(
-        (size_t)engine->config->num_worker_threads * sizeof(worker_type*));
+    (size_t)engine->config->num_worker_threads * sizeof(worker_type*));
     for (i=0; i < (size_t) engine->config->num_worker_threads; i++) {
         asprintf(&name, "worker[%d]", i+1);
         engine->workers[i] = worker_create(name, engine->taskq);
