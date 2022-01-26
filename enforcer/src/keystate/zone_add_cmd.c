@@ -31,6 +31,7 @@
 #include "daemon/engine.h"
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
+#include "longgetopt.h"
 #include "file.h"
 #include "str.h"
 #include "log.h"
@@ -135,29 +136,29 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
         return -1;
     }
 
-    optind = 0;
-    while ((opt = getopt_long(argc, (char* const*)argv, "z:p:s:i:o:j:q:un", long_options, &long_index)) != -1) {
+    struct longgetopt optctx;
+    for(longgetopt(argc,argv,"z:p:s:i:o:j:q:un",long_options,&long_index,&optctx); (opt = longgetopt(argc,argv,NULL,NULL,&long_index,&optctx)) >= 0; ) {
         switch (opt) {
             case 'z':
-                zone_name = optarg;
+                zone_name = optctx.optarg;
                 break;
             case 'p':
-                policy_name = optarg;
+                policy_name = optctx.optarg;
                 break;
             case 's':
-                signconf = optarg;
+                signconf = optctx.optarg;
                 break;
             case 'i':
-                input = optarg;
+                input = optctx.optarg;
                 break;
             case 'o':
-                output = optarg;
+                output = optctx.optarg;
                 break;
             case 'j':
-                input_type = optarg;
+                input_type = optctx.optarg;
                 break;
             case 'q':
-                output_type = optarg;
+                output_type = optctx.optarg;
                 break;
             case 'u':
                 write_xml = 1;

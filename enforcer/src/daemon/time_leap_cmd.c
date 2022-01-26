@@ -29,6 +29,7 @@
 #include <getopt.h>
 #include "config.h"
 
+#include "longgetopt.h"
 #include "file.h"
 #include "duration.h"
 #include "log.h"
@@ -108,11 +109,11 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 		return -1;
 	}
 
-	optind = 0;
-	while ((opt = getopt_long(argc, (char* const*)argv, "t:a", long_options, &long_index)) != -1) {
+	struct longgetopt optctx;
+	for(longgetopt(argc,argv,"t:a",long_options,&long_index,&optctx); (opt = longgetopt(argc,argv,NULL,NULL,&long_index,&optctx)) >= 0; ) {
 		switch (opt) {
 			case 't':
-				time = optarg;
+				time = optctx.optarg;
 				break;
 			case 'a':
 				attach = 1;

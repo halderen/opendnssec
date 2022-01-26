@@ -33,6 +33,7 @@
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
 #include "daemon/engine.h"
+#include "longgetopt.h"
 #include "file.h"
 #include "duration.h"
 #include "log.h"
@@ -395,8 +396,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
         client_printf_err(sockfd, "too many arguments\n");
         return -1;
     }
-    optind = 0;
-    while ((opt = getopt_long(argc, (char* const*)argv, "vdfpz:t:e:a", long_options, &long_index) ) != -1) {
+    struct longgetopt optctx;
+    for(longgetopt(argc,argv,"vdfpz:t:e:k:a",long_options,&long_index,&optctx); (opt = longgetopt(argc,argv,NULL,NULL,&long_index,&optctx)) >= 0; ) {
         switch (opt) {
             case 'v':
                 bVerbose = 1;
@@ -411,13 +412,14 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
                 bParsable = 1;
                 break;
             case 'z':
-                zonename = optarg;
+                zonename = optctx.optarg;
                 break;
             case 't':
-                keytype = optarg;
+                keytype = optctx.optarg;
                 break;
+            case 'k':
             case 'e':
-                keystate = optarg;
+                keystate = optctx.optarg;
                 break;
             case 'a':
                 bAll = 1;

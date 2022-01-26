@@ -33,6 +33,7 @@
 #include "cmdhandler.h"
 #include "daemon/engine.h"
 #include "enforcer/enforce_task.h"
+#include "longgetopt.h"
 #include "file.h"
 #include "log.h"
 #include "str.h"
@@ -463,17 +464,17 @@ run_ds_cmd(int sockfd, const char *cmd,
 		return -1;
 	}
 
-	optind = 0;
-	while ((opt = getopt_long(argc, (char* const*)argv, "z:k:x:a", long_options, &long_index)) != -1) {
+	struct longgetopt optctx;
+	for(longgetopt(argc,argv,"z:k:x:a",long_options,&long_index,&optctx); (opt = longgetopt(argc,argv,NULL,NULL,&long_index,&optctx)) >= 0; ) {
 		switch (opt) {
 			case 'z':
-				zonename = optarg;
+				zonename = optctx.optarg;
 				break;
 			case 'k':
-				cka_id = optarg;
+				cka_id = optctx.optarg;
 				break;
 			case 'x':
-				keytag_s = optarg;
+				keytag_s = optctx.optarg;
 				break;
 			case 'a':
 				all = 1;

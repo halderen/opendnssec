@@ -33,6 +33,7 @@
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
 #include "daemon/engine.h"
+#include "longgetopt.h"
 #include "file.h"
 #include "log.h"
 #include "str.h"
@@ -321,20 +322,20 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
         return -1;
     }
 
-    optind = 0;
-    while ((opt = getopt_long(argc, (char* const*)argv, "z:t:e:k:ads", long_options, &long_index)) != -1) {
+    struct longgetopt optctx;
+    for(longgetopt(argc,argv,"z:t:e:k:ads",long_options,&long_index,&optctx); (opt = longgetopt(argc,argv,NULL,NULL,&long_index,&optctx)) >= 0; ) {
         switch (opt) {
             case 'z':
-                zonename = optarg;
+                zonename = optctx.optarg;
                 break;
             case 't':
-                keytype = optarg;
+                keytype = optctx.optarg;
                 break;
             case 'e':
-                keystate = optarg;
+                keystate = optctx.optarg;
                 break;
             case 'k':
-                cka_id = optarg;
+                cka_id = optctx.optarg;
                 break;
             case 'a':
                 all = 1;

@@ -33,6 +33,7 @@
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
 #include "daemon/engine.h"
+#include "longgetopt.h"
 #include "str.h"
 #include "enforcer/enforce_task.h"
 #include "clientpipe.h"
@@ -165,7 +166,7 @@ static int
 run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 {
 	char buf[ODS_SE_MAXLINE];
-	#define NARGV 6
+	#define NARGV 8
 	const char *argv[NARGV];
 	int argc = 0, error, nkeytype = 0;
 	int long_index = 0, opt = 0;
@@ -195,17 +196,17 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 		return -1;
 	}
 
-	optind = 0;
-	while ((opt = getopt_long(argc, (char* const*)argv, "p:z:t:", long_options, &long_index)) != -1) {
+	struct longgetopt optctx;
+	for(longgetopt(argc,argv,"p:z:t:",long_options,&long_index,&optctx); (opt = longgetopt(argc,argv,NULL,NULL,&long_index,&optctx)) >= 0; ) {
 		switch (opt) {
 			case 'z':
-				zone = optarg;
+				zone = optctx.optarg;
 				break;
 			case 'p':
-				policy = optarg;
+				policy = optctx.optarg;
 				break;
 			case 't':
-				keytype = optarg;
+				keytype = optctx.optarg;
 				break;
 			default:
 				client_printf_err(sockfd, "unknown arguments\n");
