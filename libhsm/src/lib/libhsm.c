@@ -3143,6 +3143,141 @@ hsm_remove_key(hsm_ctx_t *ctx, libhsm_key_t *key)
     return 0;
 }
 
+int
+hsm_copy_key(hsm_ctx_t *ctx, libhsm_key_t* key, const char* id_str)
+{
+    hsm_session_t *session;
+    unsigned char* id;
+    size_t id_len;
+    CK_RV rv;
+    CK_KEY_TYPE keyType = CKK_EC; //CKK_ECDSA
+    CK_OBJECT_HANDLE copy;
+    CK_BBOOL attrSign;
+    CK_BBOOL attrDecrypt;
+    CK_BBOOL attrUnwrap;
+    CK_BBOOL attrSensitive;
+    CK_BBOOL attrToken;
+    CK_BBOOL attrPrivate;
+    CK_BBOOL attrExtractable;
+
+CK_BYTE oidP256[] = { 0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07 };
+CK_BYTE oidP384[] = { 0x06, 0x05, 0x2B, 0x81, 0x04, 0x00, 0x22 };
+
+    /* the CKA_LABEL will contain a hexadecimal string representation
+     * of the id */
+
+    id = hsm_hex_parse(id_str, &id_len);
+
+    session = hsm_find_key_session(ctx, key);
+    if (!session) return -1;
+
+    CK_ATTRIBUTE copyTemplate[] = {
+{ CKA_EC_PARAMS,           NULL,     0               },
+        { CKA_LABEL,(CK_UTF8CHAR*) id_str,   strlen(id_str)   },
+        { CKA_ID,                  id,       16               },
+        { CKA_KEY_TYPE,    &keyType,         sizeof(CK_KEY_TYPE) },
+        { CKA_SIGN,        &attrSign,        sizeof (CK_BBOOL) },
+        { CKA_DECRYPT,     &attrDecrypt,     sizeof (CK_BBOOL) },
+        { CKA_UNWRAP,      &attrUnwrap,      sizeof (CK_BBOOL) },
+        { CKA_SENSITIVE,   &attrSensitive,   sizeof (CK_BBOOL) },
+        { CKA_TOKEN,       &attrToken,       sizeof (CK_BBOOL)  },
+        { CKA_PRIVATE,     &attrPrivate,     sizeof (CK_BBOOL)  },
+        { CKA_EXTRACTABLE, &attrExtractable, sizeof (CK_BBOOL) }
+    };
+    CK_ATTRIBUTE privateObjectTemplate[] = {
+        { CKA_KEY_TYPE,    &keyType,         sizeof(CK_KEY_TYPE) },
+        { CKA_SIGN,        &attrSign,        sizeof (CK_BBOOL) },
+        { CKA_DECRYPT,     &attrDecrypt,     sizeof (CK_BBOOL) },
+        { CKA_UNWRAP,      &attrUnwrap,      sizeof (CK_BBOOL) },
+        { CKA_SENSITIVE,   &attrSensitive,   sizeof (CK_BBOOL) },
+        { CKA_TOKEN,       &attrToken,       sizeof (CK_BBOOL) },
+        { CKA_PRIVATE,     &attrPrivate,     sizeof (CK_BBOOL) },
+        { CKA_EXTRACTABLE, &attrExtractable, sizeof (CK_BBOOL) }
+//CKA_ECDSA_PARAMS		(0x180)
+//CKA_EC_PARAMS			(0x180)
+//CKA_EC_POINT			(0x181)
+    };
+    CK_ATTRIBUTE publicObjectTemplate[] = {
+        { CKA_KEY_TYPE,    &keyType,         sizeof(CK_KEY_TYPE) },
+        { CKA_VERIFY,        &attrSign,        sizeof (CK_BBOOL) },
+        { CKA_ENCRYPT,     &attrDecrypt,     sizeof (CK_BBOOL) },
+        { CKA_WRAP,      &attrUnwrap,      sizeof (CK_BBOOL) },
+        { CKA_TOKEN,       &attrToken,       sizeof (CK_BBOOL) },
+    };
+
+    char* curve = "P-256";
+    /* Select the curve */
+    if (strcmp(curve, "P-256") == 0)
+    {
+        copyTemplate[0].pValue = oidP256;
+        copyTemplate[0].ulValueLen = sizeof(oidP256);
+    }
+    else if (strcmp(curve, "P-384") == 0)
+    {
+        copyTemplate[0].pValue = oidP384;
+        copyTemplate[0].ulValueLen = sizeof(oidP384);
+    }
+    else
+    {
+        return 1;
+    }
+
+    
+    
+    rv = ((CK_FUNCTION_LIST_PTR)session->module->sym)->C_GetAttributeValue(session->session, key->private_key, privateObjectTemplate, sizeof(privateObjectTemplate)/sizeof(CK_ATTRIBUTE));
+    if (hsm_pkcs11_check_error(ctx, rv, "get attributes private key")) {
+        return 1;
+    }
+    rv = ((CK_FUNCTION_LIST_PTR)session->module->sym)->C_CopyObject(session->session, key->private_key, copyTemplate, 2, &copy);
+    if (hsm_pkcs11_check_error(ctx, rv, "copy private key")) {
+        return 1;
+    }
+    if (key->public_key != 0) { /* bad assumption, but the only way we can check here if public key present */
+        rv = ((CK_FUNCTION_LIST_PTR)session->module->sym)->C_GetAttributeValue(session->session, key->public_key, publicObjectTemplate, sizeof(publicObjectTemplate)/sizeof(CK_ATTRIBUTE));
+        if (hsm_pkcs11_check_error(ctx, rv, "get attributes public key")) {
+            return 1;
+        }
+        rv = ((CK_FUNCTION_LIST_PTR)session->module->sym)->C_CopyObject(session->session, key->public_key, copyTemplate, 2, &copy);
+        if (hsm_pkcs11_check_error(ctx, rv, "copy public key")) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int
+hsm_rename_key(hsm_ctx_t *ctx, libhsm_key_t* key, const char* id_str)
+{
+    hsm_session_t *session;
+    unsigned char* id;
+    size_t id_len;
+    CK_RV rv;
+
+    id = hsm_hex_parse(id_str, &id_len);
+
+    session = hsm_find_key_session(ctx, key);
+    if (!session) return -1;
+
+    CK_ATTRIBUTE template[] = {
+        { CKA_ID,      id,                    16               },
+        { CKA_LABEL,   (CK_UTF8CHAR*) id_str, strlen(id_str)   }
+    };
+    
+    rv = ((CK_FUNCTION_LIST_PTR)session->module->sym)->C_SetAttributeValue(session->session, key->private_key, template, sizeof(template)/sizeof(CK_ATTRIBUTE));
+    if (hsm_pkcs11_check_error(ctx, rv, "set attributes private key")) {
+        return 1;
+    }
+    if (key->public_key != 0) { /* bad assumption, but the only way we can check here if public key present */
+        rv = ((CK_FUNCTION_LIST_PTR)session->module->sym)->C_SetAttributeValue(session->session, key->public_key, template, sizeof(template)/sizeof(CK_ATTRIBUTE));
+        if (hsm_pkcs11_check_error(ctx, rv, "set attributes public key")) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 void
 libhsm_key_list_free(libhsm_key_t **key_list, size_t count)
 {
