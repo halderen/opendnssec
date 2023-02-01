@@ -27,9 +27,9 @@
  *
  */
 
-#include <getopt.h>
 #include "config.h"
-
+#include <getopt.h>
+#include "longgetopt.h"
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
 #include "daemon/engine.h"
@@ -360,7 +360,6 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 {
     char buf[ODS_SE_MAXLINE];
     #define NARGV 12
-    const char *argv[NARGV];
     int success, argIndex;
     int argc = 0, bVerbose = 0, bDebug = 0, bFull = 0, bParsable = 0, bAll = 0;
     int long_index = 0, opt = 0;
@@ -368,7 +367,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
     const char* keystate = NULL;
     const char* zonename = NULL;
     db_connection_t* dbconn = getconnectioncontext(context);
-
+    char *argv[NARGV];
+    struct longgetopt longgetoptctx; 
     static struct option long_options[] = {
         {"verbose", no_argument, 0, 'v'},
         {"debug", no_argument, 0, 'd'},
@@ -396,7 +396,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
         return -1;
     }
     optind = 0;
-    while ((opt = getopt_long(argc, (char* const*)argv, "vdfpz:t:e:a", long_options, &long_index) ) != -1) {
+    for(opt  = longgetopt(argc, argv, "vdfpz:t:e:a", long_options, &long_index, &longgetoptctx);
+        (opt = longgetopt(argc, argv, NULL, NULL, &long_index, &longgetoptctx))>=0; ) {
         switch (opt) {
             case 'v':
                 bVerbose = 1;

@@ -27,9 +27,9 @@
  *
  */
 
-#include <getopt.h>
 #include "config.h"
-
+#include <getopt.h>
+#include "longgetopt.h"
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
 #include "daemon/engine.h"
@@ -80,13 +80,13 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 	task_type *task;
 	char *buf;
 	int argc = 0;
-	char const *argv[MAX_ARGS];
 	int long_index = 0, opt = 0;
 	char const *zone_name = NULL;
 	int pos;
         db_connection_t* dbconn = getconnectioncontext(context);
         engine_type* engine = getglobalcontext(context);
-
+	char *argv[MAX_ARGS];
+	struct longgetopt longgetoptctx; 
 	static struct option long_options[] = {
 		{"zone", required_argument, 0, 'z'},
 		{0, 0, 0, 0}
@@ -110,7 +110,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 	}
 
 	optind = 0;
-	while ((opt = getopt_long(argc, (char* const*)argv, "z:", long_options, &long_index)) != -1) {
+	for(opt  = longgetopt(argc, argv, "z:", long_options, &long_index, &longgetoptctx);
+	    (opt = longgetopt(argc, argv, NULL, NULL, &long_index, &longgetoptctx))>=0; ) {
 		switch (opt) {
 			case 'z':
 				zone_name = optarg;

@@ -26,7 +26,9 @@
  *
  */
 
+#include "config.h"
 #include <getopt.h>
+#include "longgetopt.h"
 #include "daemon/engine.h"
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
@@ -65,7 +67,6 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 {
     #define NARGV 4
     char* buf;
-    const char* argv[NARGV];
     int returnCode;
     int argc = 0, long_index = 0, opt = 0;
     const char* policy_name = NULL;
@@ -73,7 +74,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
     policy_t* policy;
     db_connection_t* dbconn = getconnectioncontext(context);;
     engine_type* engine = getglobalcontext(context);
-
+    char *argv[NARGV];
+    struct longgetopt longgetoptctx; 
     static struct option long_options[] = {
         {"policy", required_argument, 0, 'p'},
         {"all", no_argument, 0, 'a'},
@@ -97,7 +99,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
     }
 
     optind = 0;
-    while ((opt = getopt_long(argc, (char* const*)argv, "p:a", long_options, &long_index)) != -1) {
+    for(opt  = longgetopt(argc, argv, "p:a", long_options, &long_index, &longgetoptctx);
+        (opt = longgetopt(argc, argv, NULL, NULL, &long_index, &longgetoptctx))>=0; ) {
         switch (opt) {
             case 'p':
                 policy_name = optarg;

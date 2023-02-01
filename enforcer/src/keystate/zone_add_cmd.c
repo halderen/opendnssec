@@ -27,7 +27,8 @@
  */
 
 #include "config.h"
-
+#include <getopt.h>
+#include "longgetopt.h"
 #include "daemon/engine.h"
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
@@ -88,7 +89,6 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 {
     #define NARGV 18
     char* buf;
-    const char* argv[NARGV];
     int argc = 0;
     const char *zone_name = NULL;
     const char *policy_name = NULL;
@@ -106,7 +106,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
     int long_index = 0, opt = 0;
     db_connection_t* dbconn = getconnectioncontext(context);
     engine_type* engine = getglobalcontext(context);
-
+    char *argv[NARGV];
+    struct longgetopt longgetoptctx; 
     static struct option long_options[] = {
         {"zone", required_argument, 0, 'z'},
         {"policy", required_argument, 0, 'p'},
@@ -136,7 +137,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
     }
 
     optind = 0;
-    while ((opt = getopt_long(argc, (char* const*)argv, "z:p:s:i:o:j:q:un", long_options, &long_index)) != -1) {
+    for(opt  = longgetopt(argc, argv, "z:p:s:i:o:j:q:un", long_options, &long_index, &longgetoptctx);
+        (opt = longgetopt(argc, argv, NULL, NULL, &long_index, &longgetoptctx))>=0; ) {
         switch (opt) {
             case 'z':
                 zone_name = optarg;

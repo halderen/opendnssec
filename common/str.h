@@ -49,7 +49,7 @@
  * \param[out] argv, where the tokens are stored.
  * \return number of tokens processed.
  */
-int ods_str_explode(char *buf, int argc, const char *argv[]);
+int ods_str_explode(char *buf, int argc, char ** const argv);
 
 /**
  * Concatenate characters without custom allocators.

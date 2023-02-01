@@ -26,7 +26,9 @@
  *
  */
 
+#include "config.h"
 #include <getopt.h>
+#include "longgetopt.h"
 #include "daemon/engine.h"
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
@@ -36,7 +38,6 @@
 #include "policy/policy_import.h"
 #include "policy/policy_resalt_task.h"
 #include "enforcer/enforce_task.h"
-
 
 #include "policy/policy_import_cmd.h"
 
@@ -81,8 +82,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
     int remove_missing_policies = 0, argc = 0;
     int long_index = 0, opt = 0;
     char buf[ODS_SE_MAXLINE];
-    char const *argv[NARGV];
-
+    char *argv[NARGV];
+    struct longgetopt longgetoptctx; 
     static struct option long_options[] = {
         {"remove-missing-policies", no_argument, 0, 'r'},
         {0, 0, 0, 0}
@@ -111,7 +112,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
     }
 
     optind = 0;
-    while ((opt = getopt_long(argc, (char* const*)argv, "r", long_options, &long_index)) != -1 ) {
+    for(opt  = longgetopt(argc, argv, "r", long_options, &long_index, &longgetoptctx);
+        (opt = longgetopt(argc, argv, NULL, NULL, &long_index, &longgetoptctx))>=0; ) {
         switch (opt) {
             case 'r':
                 remove_missing_policies = 1;

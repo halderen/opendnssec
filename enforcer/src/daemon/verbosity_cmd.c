@@ -62,7 +62,7 @@ static int
 run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 {
 	const int NARGV = MAX_ARGS;
-	const char *argv[MAX_ARGS];
+	char *argv[MAX_ARGS];
 	char buf[ODS_SE_MAXLINE];
 	int argc;
 	long val;

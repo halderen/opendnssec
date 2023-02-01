@@ -76,6 +76,7 @@ AX_PTHREAD
 
 # checks for library functions
 AC_CHECK_FUNCS([arc4random arc4random_uniform])
+AC_CHECK_FUNCS([getopt_long])
 AC_CHECK_FUNCS([dup2 endpwent select strerror strtol])
 AC_CHECK_FUNCS([getpass getpassphrase memset])
 AC_CHECK_FUNCS([localtime_r memset strdup strerror strstr strtol strtoul])

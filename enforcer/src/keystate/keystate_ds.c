@@ -26,10 +26,9 @@
  */
 
 #include "config.h"
-
-#include <sys/stat.h>
 #include <getopt.h>
-
+#include "longgetopt.h"
+#include <sys/stat.h>
 #include "cmdhandler.h"
 #include "daemon/engine.h"
 #include "enforcer/enforce_task.h"
@@ -443,8 +442,8 @@ run_ds_cmd(int sockfd, const char *cmd,
 	zone_db_t* zone = NULL;
 	int all = 0;
 	int argc = 0, long_index = 0, opt = 0;
-	const char* argv[NARGV];
-
+	char *argv[NARGV];
+	struct longgetopt longgetoptctx; 
 	static struct option long_options[] = {
 		{"zone", required_argument, 0, 'z'},
 		{"cka_id", required_argument, 0, 'k'},
@@ -464,7 +463,8 @@ run_ds_cmd(int sockfd, const char *cmd,
 	}
 
 	optind = 0;
-	while ((opt = getopt_long(argc, (char* const*)argv, "z:k:x:a", long_options, &long_index)) != -1) {
+	for(opt  = longgetopt(argc, argv, "z:k:x:a", long_options, &long_index, &longgetoptctx);
+	    (opt = longgetopt(argc, argv, NULL, NULL, &long_index, &longgetoptctx))>=0; ) {
 		switch (opt) {
 			case 'z':
 				zonename = optarg;

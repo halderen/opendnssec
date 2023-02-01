@@ -27,9 +27,9 @@
  *
  */
 
-#include<getopt.h>
 #include "config.h"
-
+#include <getopt.h>
+#include "longgetopt.h"
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
 #include "daemon/engine.h"
@@ -191,14 +191,14 @@ static int
 run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 {
     #define NARGV 4
-    const char *argv[NARGV];
     int argc = 0, long_index = 0, opt = 0;
     const char *repository = NULL;
     char buf[ODS_SE_MAXLINE];
     int status;
     db_clause_list_t* clause_list;
     db_connection_t* dbconn = getconnectioncontext(context);
-
+    char *argv[NARGV];
+    struct longgetopt longgetoptctx; 
     static struct option long_options[] = {
         {"repository", required_argument, 0, 'r'},
         {0, 0, 0, 0}
@@ -216,7 +216,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
     }
 
     optind = 0;
-    while ((opt = getopt_long(argc, (char* const*)argv, "r:", long_options, &long_index)) != -1) {
+    for(opt  = longgetopt(argc, argv, "r:", long_options, &long_index, &longgetoptctx);
+        (opt = longgetopt(argc, argv, NULL, NULL, &long_index, &longgetoptctx))>=0; ) {
         switch (opt) {
             case 'r':
                 repository = optarg;

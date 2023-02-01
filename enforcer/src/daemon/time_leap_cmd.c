@@ -26,9 +26,9 @@
  *
  */
 
-#include <getopt.h>
 #include "config.h"
-
+#include <getopt.h>
+#include "longgetopt.h"
 #include "file.h"
 #include "duration.h"
 #include "log.h"
@@ -83,14 +83,14 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 	time_t time_leap = 0;
 	struct tm tm;
 	const int NARGV = MAX_ARGS;
-	const char *argv[MAX_ARGS];
         int taskcount;
 	int argc = 0, attach = 0;
 	int long_index = 0, opt = 0;
 	int processed_enforce;
 	task_type* task = NULL;
         engine_type* engine = getglobalcontext(context);
-
+	char *argv[NARGV];
+	struct longgetopt longgetoptctx; 
 	static struct option long_options[] = {
 		{"time", required_argument, 0, 't'},
 		{"attach", no_argument, 0, 'a'},
@@ -109,7 +109,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 	}
 
 	optind = 0;
-	while ((opt = getopt_long(argc, (char* const*)argv, "t:a", long_options, &long_index)) != -1) {
+	for(opt  = longgetopt(argc, argv, "t:a", long_options, &long_index, &longgetoptctx);
+	    (opt = longgetopt(argc, argv, NULL, NULL, &long_index, &longgetoptctx))>=0; ) {
 		switch (opt) {
 			case 't':
 				time = optarg;

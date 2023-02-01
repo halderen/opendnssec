@@ -1,3 +1,7 @@
+
+#include "config.h"
+#include <getopt.h>
+#include "longgetopt.h"
 #include "daemon/engine.h"
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
@@ -9,8 +13,6 @@
 #include "keystate/key_purge.h"
 
 #include "keystate/key_purge_cmd.h"
-
-#include <getopt.h>
 
 #define MAX_ARGS 4
 
@@ -55,12 +57,12 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 	const char *policy_name = NULL;
 	char *buf;
 	int argc = 0;
-	const char *argv[MAX_ARGS];
 	int long_index = 0, opt = 0;
 	int error = 0;
         int hsmPurge = 0;
         db_connection_t* dbconn = getconnectioncontext(context);
-
+	char *argv[MAX_ARGS];
+	struct longgetopt longgetoptctx; 
 	static struct option long_options[] = {
 		{"zone", required_argument, 0, 'z'},
 		{"policy", required_argument, 0, 'p'},
@@ -87,7 +89,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 	}
 
 	optind = 0;
-	while ((opt = getopt_long(argc, (char* const*)argv, "z:p:d", long_options, &long_index)) != -1) {
+	for(opt  = longgetopt(argc, argv, "z:p:d", long_options, &long_index, &longgetoptctx);
+	    (opt = longgetopt(argc, argv, NULL, NULL, &long_index, &longgetoptctx)) >=0 ; ) {
 		switch (opt) {
 			case 'z':
 				zone_name = optarg;

@@ -29,7 +29,7 @@
 
 #include "config.h"
 #include <getopt.h>
-
+#include "longgetopt.h"
 #include "db/zone_db.h"
 #include "daemon/engine.h"
 #include "cmdhandler.h"
@@ -171,11 +171,11 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 {
 	#define NARGV 4
 	char buf[ODS_SE_MAXLINE];
-	const char *argv[NARGV];
 	int argc = 0, long_index = 0, opt = 0;
 	const char *zone = NULL;
         db_connection_t* dbconn = getconnectioncontext(context);
-
+	char *argv[NARGV];
+	struct longgetopt longgetoptctx; 
 	static struct option long_options[] = {
 		{"zone", required_argument, 0, 'z'},
 		{0, 0, 0, 0}
@@ -197,7 +197,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
 	}
 
 	optind = 0;
-	while ((opt = getopt_long(argc, (char* const*)argv, "z:", long_options, &long_index)) != -1) {
+	for(opt  = longgetopt(argc, argv, "z:", long_options, &long_index, &longgetoptctx);
+	    (opt = longgetopt(argc, argv, NULL, NULL, &long_index, &longgetoptctx))>=0; ) {
 		switch (opt) {
 			case 'z':
 				zone = optarg;

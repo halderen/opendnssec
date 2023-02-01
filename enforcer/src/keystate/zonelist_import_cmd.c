@@ -27,9 +27,9 @@
  */
 
 #include "config.h"
-#include <limits.h>
 #include <getopt.h>
-
+#include <limits.h>
+#include "longgetopt.h"
 #include "daemon/engine.h"
 #include "cmdhandler.h"
 #include "daemon/enforcercommands.h"
@@ -74,11 +74,11 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
     int ret, argc = 0, remove_missing_zones = 0;
     #define NARGV 5
     int long_index = 0, opt = 0;
-    const char *argv[NARGV];
     const char* zonelist_path = NULL;
     db_connection_t* dbconn = getconnectioncontext(context);
     engine_type* engine = getglobalcontext(context);
-
+    char *argv[NARGV];
+    struct longgetopt longgetoptctx; 
     static struct option long_options[] = {
         {"remove-missing-zones", no_argument, 0, 'r'},
         {"file", required_argument, 0, 'f'},
@@ -109,7 +109,8 @@ run(int sockfd, cmdhandler_ctx_type* context, const char *cmd)
     }
 
     optind = 0;
-    while ((opt = getopt_long(argc, (char* const*)argv, "rf:", long_options, &long_index)) != -1) {
+    for(opt  = longgetopt(argc, argv, "rf:", long_options, &long_index, &longgetoptctx);
+        (opt = longgetopt(argc, argv, NULL, NULL, &long_index, &longgetoptctx))>=0; ) {
         switch (opt) {
             case 'r':
                 remove_missing_zones = 1;

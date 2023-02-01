@@ -46,7 +46,7 @@
 static const char *module_str = "str";
 
 int
-ods_str_explode(char *buf, int argc, const char *argv[])
+ods_str_explode(char *buf, int argc, char ** const argv)
 {
     int narg = 0;
     char *p = strtok(buf, " ");

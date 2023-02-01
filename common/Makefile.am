@@ -25,4 +25,5 @@ libcompat_a_SOURCES = \
 	scheduler/worker.c scheduler/worker.h \
 	scheduler/task.c scheduler/task.h \
 	cmdhandler.c cmdhandler.h \
+	longgetopt.c longgetopt.h \
 	janitor.c janitor.h
