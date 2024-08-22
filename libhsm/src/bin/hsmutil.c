@@ -281,7 +281,6 @@ cmd_copy (int argc, char *argv[])
 {
     char* id;
     char* newid;
-    char* repository;
     int result;
 
     libhsm_key_t *key = NULL;
@@ -321,6 +320,43 @@ cmd_rename (int argc, char *argv[])
     char* id;
     char* newid;
     char* repository;
+    int result;
+
+    libhsm_key_t *key = NULL;
+
+    if (argc != 2) {
+        usage();
+        return -1;
+    }
+
+    id = argv[0];
+    newid = argv[1];
+
+    key = hsm_find_key_by_id(ctx, id);
+
+    if (!key) {
+        printf("Key not found: %s\n", id);
+        return -1;
+    }
+
+    result = hsm_rename_key(ctx, key, newid);
+
+    if (!result) {
+        printf("Key rename successful.\n");
+    } else {
+        printf("Key rename failed.\n");
+    }
+
+    libhsm_key_free(key);
+
+    return result;
+}
+
+static int
+cmd_rename (int argc, char *argv[])
+{
+    char* id;
+    char* newid;
     int result;
 
     libhsm_key_t *key = NULL;

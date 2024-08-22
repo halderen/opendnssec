@@ -434,7 +434,6 @@ extern int hsm_copy_key(hsm_ctx_t *ctx, libhsm_key_t* key, const char* id_str);
 
 extern int hsm_rename_key(hsm_ctx_t *ctx, libhsm_key_t* key, const char* id_str);
 
-
 /*! Free the memory of an array of key structures, as returned by
 hsm_list_keys()
 

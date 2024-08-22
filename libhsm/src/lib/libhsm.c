@@ -3150,6 +3150,7 @@ hsm_copy_key(hsm_ctx_t *ctx, libhsm_key_t* key, const char* id_str)
     unsigned char* id;
     size_t id_len;
     CK_RV rv;
+    // CK_KEY_TYPE keyType = CKK_RSA;
     CK_KEY_TYPE keyType = CKK_EC; //CKK_ECDSA
     CK_OBJECT_HANDLE copy;
     CK_BBOOL attrSign;
